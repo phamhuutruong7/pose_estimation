@@ -1,0 +1,37 @@
+{
+    "dart.flutterSdkPaths": [],
+    "dart.enableSdkFormatter": true,
+    "dart.lineLength": 80,
+    "dart.insertArgumentPlaceholders": false,
+    "dart.previewFlutterUiGuides": true,
+    "dart.previewFlutterUiGuidesCustomTracking": true,
+    "dart.hotReloadOnSave": "all",    "dart.devToolsTheme": "dark",    "github.copilot.enable": {
+        "*": true,
+        "yaml": true,
+        "plaintext": true,
+        "markdown": true
+    },
+    "github.copilot.terminal.suggestCommands": "auto",
+    "github.copilot.chat.executeImmediately": "auto",
+    "github.copilot.advanced": {
+        "inlineSuggestEnable": true,
+        "authProvider": "github"
+    },
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "editor.rulers": [80],
+    "editor.selectionHighlight": false,
+    "editor.suggest.snippetsPreventQuickSuggestions": false,
+    "editor.suggestSelection": "first",
+    "editor.tabCompletion": "onlySnippets",
+    "editor.wordBasedSuggestions": "off",
+    "[dart]": {
+        "editor.formatOnSave": true,
+        "editor.formatOnType": true,
+        "editor.selectionHighlight": false,
+        "editor.suggest.snippetsPreventQuickSuggestions": false,
+        "editor.suggestSelection": "first",
+        "editor.tabCompletion": "onlySnippets",
+        "editor.wordBasedSuggestions": "off"
+    }
+}
