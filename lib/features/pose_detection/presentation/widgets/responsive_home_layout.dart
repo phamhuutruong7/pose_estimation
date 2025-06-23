@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/utils/responsive_helper.dart';
+import '../../../video_analysis/presentation/pages/video_analysis_page.dart';
 
 class ResponsiveHomeLayout extends StatelessWidget {
   const ResponsiveHomeLayout({super.key});
@@ -109,11 +110,12 @@ class ResponsiveHomeLayout extends StatelessWidget {
         // Video Analyze Button
         SizedBox(
           width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              // TODO: Navigate to video analyze page
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Video Analyze mode - Coming soon!')),
+          child: ElevatedButton.icon(            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const VideoAnalysisPage(),
+                ),
               );
             },
             icon: const Icon(Icons.video_library),

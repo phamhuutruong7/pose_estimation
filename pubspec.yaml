@@ -43,6 +43,13 @@ dependencies:
   camera: ^0.10.5+5
   google_ml_kit: ^0.16.3
   
+  # Video handling
+  file_picker: ^6.1.1
+  video_player: ^2.8.1
+  video_thumbnail: ^0.5.3
+  path_provider: ^2.1.1
+  path: ^1.8.3
+  
   # UI
   cupertino_icons: ^1.0.8
 
