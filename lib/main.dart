@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:media_kit/media_kit.dart';
 
 import 'features/pose_detection/presentation/bloc/pose_detection_bloc.dart';
 import 'features/pose_detection/presentation/pages/home_page.dart';
@@ -8,6 +9,9 @@ import 'injection_container.dart' as di;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize MediaKit for video playback
+  MediaKit.ensureInitialized();
   
   // Allow both portrait and landscape orientations
   await SystemChrome.setPreferredOrientations([

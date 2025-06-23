@@ -8,6 +8,7 @@ import 'package:path/path.dart' as path;
 import '../../../../core/utils/responsive_helper.dart';
 import '../../domain/entities/video_item.dart';
 import '../widgets/video_grid_view.dart';
+import 'media_kit_video_player_page.dart';
 
 class VideoAnalysisPage extends StatefulWidget {
   const VideoAnalysisPage({super.key});
@@ -89,9 +90,8 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
       
       setState(() {
         _videos.add(videoItem);
-      });
-    } catch (e) {
-      print('Error processing video file: $e');
+      });    } catch (e) {
+      debugPrint('Error processing video file: $e');
     }
   }
 
@@ -114,9 +114,8 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
         quality: 75,
       );
       
-      return thumbnailPath;
-    } catch (e) {
-      print('Error generating thumbnail: $e');
+      return thumbnailPath;    } catch (e) {
+      debugPrint('Error generating thumbnail: $e');
       return null;
     }
   }
@@ -254,13 +253,16 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
 
     return VideoGridView(
       videos: _videos,
-      selectedVideoIds: _selectedVideoIds,
-      onVideoTap: (video) {
+      selectedVideoIds: _selectedVideoIds,      onVideoTap: (video) {
         if (_isSelectionMode) {
           _toggleSelection(video.id);
-        } else {
-          // TODO: Navigate to video analysis screen
-          _showSuccessSnackBar('Video analysis - Coming soon!');
+        } else {          // Navigate to video player
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MediaKitVideoPlayerPage(video: video),
+            ),
+          );
         }
       },
       onVideoLongPress: (video) {
