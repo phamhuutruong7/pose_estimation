@@ -3,12 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/responsive_helper.dart';
 
 class ResponsiveHomeLayout extends StatelessWidget {
-  final VoidCallback onStartCamera;
-
-  const ResponsiveHomeLayout({
-    super.key,
-    required this.onStartCamera,
-  });
+  const ResponsiveHomeLayout({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -38,9 +33,8 @@ class ResponsiveHomeLayout extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: ResponsiveHelper.getSpacing(context)),
-            Text(
-              'Detect and track human poses in real-time using your device camera.',
+            SizedBox(height: ResponsiveHelper.getSpacing(context)),            Text(
+              'Choose your analysis mode',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: ResponsiveHelper.getBodyFontSize(context),
@@ -48,7 +42,7 @@ class ResponsiveHomeLayout extends StatelessWidget {
               ),
             ),
             SizedBox(height: ResponsiveHelper.getSpacing(context, large: true) * 2),
-            _buildStartButton(context),
+            _buildModeButtons(context),
           ],
         ),
       ),
@@ -91,9 +85,8 @@ class ResponsiveHomeLayout extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    'Detect and track human poses in real-time using your device camera.',
+                children: [                  Text(
+                    'Choose your analysis mode',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: ResponsiveHelper.getBodyFontSize(context),
@@ -101,7 +94,7 @@ class ResponsiveHomeLayout extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: ResponsiveHelper.getSpacing(context, large: true)),
-                  _buildStartButton(context),
+                  _buildModeButtons(context),
                 ],
               ),
             ),
@@ -110,24 +103,61 @@ class ResponsiveHomeLayout extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildStartButton(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onStartCamera,
-      style: ElevatedButton.styleFrom(
-        padding: ResponsiveHelper.getButtonPadding(context),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.camera_alt),
-          SizedBox(width: ResponsiveHelper.getSpacing(context) * 0.5),
-          Text(
-            'Start Camera',
-            style: TextStyle(fontSize: ResponsiveHelper.getBodyFontSize(context)),
+  Widget _buildModeButtons(BuildContext context) {
+    return Column(
+      children: [
+        // Video Analyze Button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              // TODO: Navigate to video analyze page
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Video Analyze mode - Coming soon!')),
+              );
+            },
+            icon: const Icon(Icons.video_library),
+            label: Text(
+              'Video Analyze',
+              style: TextStyle(fontSize: ResponsiveHelper.getBodyFontSize(context)),
+            ),
+            style: ElevatedButton.styleFrom(
+              padding: ResponsiveHelper.getButtonPadding(context),
+              backgroundColor: Colors.blue.shade600,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
           ),
-        ],
-      ),
+        ),
+        SizedBox(height: ResponsiveHelper.getSpacing(context)),
+        // Real-time Analyze Button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              // TODO: Navigate to real-time analyze page
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Real-time Analyze mode - Coming soon!')),
+              );
+            },
+            icon: const Icon(Icons.camera_alt),
+            label: Text(
+              'Real-time Analyze',
+              style: TextStyle(fontSize: ResponsiveHelper.getBodyFontSize(context)),
+            ),
+            style: ElevatedButton.styleFrom(
+              padding: ResponsiveHelper.getButtonPadding(context),
+              backgroundColor: Colors.green.shade600,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
