@@ -13,9 +13,15 @@
     },
     "github.copilot.terminal.suggestCommands": "auto",
     "github.copilot.chat.executeImmediately": "auto",
+    "github.copilot.chat.followUp": "always",
+    "github.copilot.chat.welcomeMessage": "never",
+    "github.copilot.chat.localeOverride": "auto",
+    "github.copilot.conversation.enableAutoSend": true,
     "github.copilot.advanced": {
         "inlineSuggestEnable": true,
-        "authProvider": "github"
+        "authProvider": "github",
+        "debug.overrideEngine": "copilot-chat",
+        "debug.useNodeFetcher": true
     },
 
     "editor.formatOnSave": true,
