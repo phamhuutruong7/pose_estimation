@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../bloc/pose_detection_bloc.dart';
@@ -14,6 +15,13 @@ class CameraPage extends StatefulWidget {
 }
 
 class _CameraPageState extends State<CameraPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Hide status bar for better camera experience
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -82,8 +90,7 @@ class _CameraPageState extends State<CameraPage> {
                   ),
                 ],
               ),
-            );
-          } else if (state is CameraInitialized || state is PoseDetectionActive) {
+            );          } else if (state is CameraInitialized || state is PoseDetectionActive) {
             return const CameraView();
           }
           
@@ -94,9 +101,10 @@ class _CameraPageState extends State<CameraPage> {
       ),
     );
   }
-
   @override
   void dispose() {
+    // Restore system UI when leaving camera
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
     context.read<PoseDetectionBloc>().add(DisposeCameraEvent());
     super.dispose();
   }
