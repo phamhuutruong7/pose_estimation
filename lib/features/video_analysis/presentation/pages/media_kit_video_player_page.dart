@@ -5,7 +5,7 @@ import 'dart:io';
 
 import '../../../../core/utils/responsive_helper.dart';
 import '../../domain/entities/video_item.dart';
-import '../widgets/ruler_scrubber.dart';
+import '../widgets/persistent_video_scrubber.dart';
 
 class MediaKitVideoPlayerPage extends StatefulWidget {
   final VideoItem video;
@@ -131,196 +131,177 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
     _player.dispose();
     super.dispose();
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: Stack(
-          children: [            // Video Player
-            Center(
-              child: _isInitialized
-                  ? GestureDetector(
-                      onTap: _toggleControls,
-                      child: Video(controller: _controller),
-                    )
-                  : _buildLoadingState(),
-            ),
-            
-            // Permanent Back Button (Always Visible)
-            Positioned(
-              top: 16,
-              left: 16,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.arrow_back,
-                    color: Colors.white,
-                    size: 24,
+        child: Column(
+          children: [
+            // Main video area with controls
+            Expanded(
+              child: Stack(
+                children: [
+                  // Video Player
+                  Center(
+                    child: _isInitialized
+                        ? GestureDetector(
+                            onTap: _toggleControls,
+                            child: Video(controller: _controller),
+                          )
+                        : _buildLoadingState(),
                   ),
-                  onPressed: () => Navigator.pop(context),
-                  tooltip: 'Back to video list',
-                ),
-              ),
-            ),
-            
-            // Top Controls (Video title and additional controls)            // Top Controls (Video title and additional controls)
-            if (_showControls)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.7),
-                        Colors.transparent,
-                      ],
+                  
+                  // Permanent Back Button (Always Visible)
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        tooltip: 'Back to video list',
+                      ),
                     ),
                   ),
-                  child: Padding(
-                    padding: ResponsiveHelper.getResponsivePadding(context).copyWith(
-                      left: 70, // Make space for the permanent back button
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            widget.video.name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                  
+                  // Top Controls (Video title and additional controls)
+                  if (_showControls)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.7),
+                              Colors.transparent,
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-            // Center Play/Pause Button
-            if (_showControls && _isInitialized)
-              Center(
-                child: GestureDetector(
-                  onTap: _togglePlayPause,
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.6),
-                      shape: BoxShape.circle,
-                    ),
-                    child: StreamBuilder(
-                      stream: _player.stream.playing,
-                      builder: (context, snapshot) {
-                        final isPlaying = snapshot.data ?? false;
-                        return Icon(
-                          isPlaying ? Icons.pause : Icons.play_arrow,
-                          color: Colors.white,
-                          size: 40,
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ),            // Bottom Controls
-            if (_showControls && _isInitialized)
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.8),
-                        Colors.transparent,
-                      ],
-                    ),
-                  ),
-                  child: Padding(
-                    padding: ResponsiveHelper.getResponsivePadding(context),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Speed control button
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Spacer(),
-                            GestureDetector(
-                              onTap: _showSpeedDialog,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: StreamBuilder(
-                                  stream: _player.stream.rate,
-                                  builder: (context, snapshot) {
-                                    final rate = snapshot.data ?? 1.0;
-                                    return Text(
-                                      '${rate}x',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    );
-                                  },
+                        child: Padding(
+                          padding: ResponsiveHelper.getResponsivePadding(context).copyWith(
+                            left: 70, // Make space for the permanent back button
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  widget.video.name,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                            ),
-                            const Spacer(),
-                          ],
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                        
-                        // Custom Ruler Scrubber
-                        StreamBuilder(
-                          stream: _player.stream.position,
-                          builder: (context, positionSnapshot) {
-                            return StreamBuilder(
-                              stream: _player.stream.duration,
-                              builder: (context, durationSnapshot) {
-                                final position = positionSnapshot.data ?? Duration.zero;
-                                final duration = durationSnapshot.data ?? Duration.zero;
-                                
-                                return RulerScrubber(
-                                  player: _player,
-                                  duration: duration,
-                                  position: position,
-                                  onSeek: (newPosition) {
-                                    _player.seek(newPosition);
-                                  },
-                                  enableScrubbing: true,
-                                );
-                              },
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
+
+                  // Center Play/Pause Button
+                  if (_showControls && _isInitialized)
+                    Center(
+                      child: GestureDetector(
+                        onTap: _togglePlayPause,
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.6),
+                            shape: BoxShape.circle,
+                          ),
+                          child: StreamBuilder(
+                            stream: _player.stream.playing,
+                            builder: (context, snapshot) {
+                              final isPlaying = snapshot.data ?? false;
+                              return Icon(
+                                isPlaying ? Icons.pause : Icons.play_arrow,
+                                color: Colors.white,
+                                size: 40,
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Speed Control (only when controls visible)
+                  if (_showControls && _isInitialized)
+                    Positioned(
+                      bottom: 16,
+                      right: 16,
+                      child: GestureDetector(
+                        onTap: _showSpeedDialog,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.7),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: StreamBuilder(
+                            stream: _player.stream.rate,
+                            builder: (context, snapshot) {
+                              final rate = snapshot.data ?? 1.0;
+                              return Text(
+                                '${rate}x',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            
+            // Persistent Bottom Scrubber (Always Visible)
+            if (_isInitialized)
+              StreamBuilder(
+                stream: _player.stream.position,
+                builder: (context, positionSnapshot) {
+                  return StreamBuilder(
+                    stream: _player.stream.duration,
+                    builder: (context, durationSnapshot) {
+                      final position = positionSnapshot.data ?? Duration.zero;
+                      final duration = durationSnapshot.data ?? Duration.zero;
+                      
+                      return PersistentVideoScrubber(
+                        player: _player,
+                        duration: duration,
+                        position: position,
+                        onSeek: (newPosition) {
+                          _player.seek(newPosition);
+                        },
+                      );
+                    },
+                  );
+                },
               ),
           ],
         ),

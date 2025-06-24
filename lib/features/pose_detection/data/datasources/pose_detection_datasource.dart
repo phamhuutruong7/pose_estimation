@@ -1,7 +1,8 @@
 import 'dart:typed_data';
 import 'dart:ui';
 import 'package:camera/camera.dart';
-import 'package:google_ml_kit/google_ml_kit.dart';
+import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
+import 'package:google_mlkit_commons/google_mlkit_commons.dart';
 
 import '../../../../core/errors/exceptions.dart' as core_exceptions;
 import '../models/pose_model.dart';

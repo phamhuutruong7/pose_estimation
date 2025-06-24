@@ -40,9 +40,7 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
     } finally {
       setState(() => _isLoading = false);
     }
-  }
-
-  Future<void> _importVideos() async {
+  }  Future<void> _importVideos() async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.video,
@@ -62,8 +60,7 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
         setState(() => _isLoading = false);
         _showSuccessSnackBar('${result.files.length} video(s) imported successfully');
       }
-    } catch (e) {
-      setState(() => _isLoading = false);
+    } catch (e) {      setState(() => _isLoading = false);
       _showErrorSnackBar('Failed to import videos: $e');
     }
   }

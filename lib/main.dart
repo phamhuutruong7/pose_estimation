@@ -7,8 +7,7 @@ import 'features/pose_detection/presentation/bloc/pose_detection_bloc.dart';
 import 'features/pose_detection/presentation/pages/home_page.dart';
 import 'injection_container.dart' as di;
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() async {  WidgetsFlutterBinding.ensureInitialized();
   
   // Initialize MediaKit for video playback
   MediaKit.ensureInitialized();
