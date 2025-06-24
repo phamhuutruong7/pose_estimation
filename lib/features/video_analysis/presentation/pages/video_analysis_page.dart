@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
+// import 'package:file_picker/file_picker.dart';  // Temporarily disabled for Android compatibility
 import 'dart:io';
 import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:path_provider/path_provider.dart';
@@ -39,8 +39,12 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
       _showErrorSnackBar('Failed to load videos: $e');
     } finally {
       setState(() => _isLoading = false);
-    }
-  }  Future<void> _importVideos() async {
+    }  }
+
+  Future<void> _importVideos() async {
+    // Temporarily disabled - file_picker not compatible with current Android build
+    _showErrorSnackBar('Video import temporarily disabled for Android compatibility');
+    /*
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.video,
@@ -60,9 +64,11 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
         setState(() => _isLoading = false);
         _showSuccessSnackBar('${result.files.length} video(s) imported successfully');
       }
-    } catch (e) {      setState(() => _isLoading = false);
+    } catch (e) {
+      setState(() => _isLoading = false);
       _showErrorSnackBar('Failed to import videos: $e');
     }
+    */
   }
 
   Future<void> _processVideoFile(String filePath) async {
