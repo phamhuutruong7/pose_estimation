@@ -95,36 +95,16 @@ class _PersistentVideoScrubberState extends State<PersistentVideoScrubber> {
     final currentPosition = _isDragging ? _scrubbingPosition : widget.position;
     final progress = widget.duration.inMilliseconds > 0
         ? currentPosition.inMilliseconds / widget.duration.inMilliseconds
-        : 0.0;
-
-    return Container(
-      color: Colors.black.withValues(alpha: 0.8),
+        : 0.0;    return Container(
+      color: Colors.transparent, // Make transparent since parent handles opacity
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Video progress bar (thin line showing overall progress)
-          Container(
-            height: 4,
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(2),
-            ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: progress.clamp(0.0, 1.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-          ),
+          // Remove the thin progress bar at top since we have the detailed scrubber
           
           // Current time display
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

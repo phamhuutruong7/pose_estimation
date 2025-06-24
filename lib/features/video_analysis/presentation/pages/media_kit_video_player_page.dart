@@ -22,14 +22,14 @@ class MediaKitVideoPlayerPage extends StatefulWidget {
 class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
   late final Player _player;
   late final VideoController _controller;
-  bool _showControls = true;
   bool _isInitialized = false;
+  bool _isMuted = false;
+  double _volumeBeforeMute = 1.0;
 
   @override
   void initState() {
     super.initState();
     _initializePlayer();
-    _hideControlsTimer();
   }
   void _initializePlayer() async {
     try {
@@ -61,60 +61,27 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
       }
     }
   }
-
-  void _hideControlsTimer() {
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted && _player.state.playing) {
-        setState(() {
-          _showControls = false;
-        });
-      }
-    });
-  }
-
-  void _toggleControls() {
-    setState(() {
-      _showControls = !_showControls;
-    });
-    if (_showControls) {
-      _hideControlsTimer();
-    }
-  }
-
   void _togglePlayPause() {
     if (_player.state.playing) {
       _player.pause();
     } else {
       _player.play();
-      _hideControlsTimer();
     }
   }
 
-  void _showSpeedDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Playback Speed'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map((speed) {
-            return ListTile(
-              title: Text('${speed}x'),
-              leading: Radio<double>(
-                value: speed,
-                groupValue: _player.state.rate,
-                onChanged: (value) {
-                  if (value != null) {
-                    _player.setRate(value);
-                    Navigator.pop(context);
-                  }
-                },
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
+  void _toggleMute() {
+    setState(() {
+      if (_isMuted) {
+        // Unmute: restore previous volume
+        _player.setVolume(_volumeBeforeMute);
+        _isMuted = false;
+      } else {
+        // Mute: save current volume and set to 0
+        _volumeBeforeMute = _player.state.volume;
+        _player.setVolume(0.0);
+        _isMuted = true;
+      }
+    });
   }
   void _showErrorDialog(String message) {
     showDialog(
@@ -139,178 +106,104 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
   void dispose() {
     _player.dispose();
     super.dispose();
-  }
-  @override
+  }  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // Main video area with controls
-            Expanded(
-              child: Stack(
-                children: [
-                  // Video Player
-                  Center(
-                    child: _isInitialized
-                        ? GestureDetector(
-                            onTap: _toggleControls,
-                            child: Video(controller: _controller),
-                          )
-                        : _buildLoadingState(),
+            // Full-height Video Player
+            Positioned.fill(
+              child: _isInitialized
+                  ? GestureDetector(
+                      onTap: _togglePlayPause, // Direct tap to play/pause
+                      child: Video(controller: _controller),
+                    )
+                  : _buildLoadingState(),
+            ),
+            
+            // Permanent Back Button (Always Visible)
+            Positioned(
+              top: 16,
+              left: 16,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.arrow_back,
+                    color: Colors.white,
+                    size: 24,
                   ),
-                  
-                  // Permanent Back Button (Always Visible)
-                  Positioned(
-                    top: 16,
-                    left: 16,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.6),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.arrow_back,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        tooltip: 'Back to video list',
-                      ),
-                    ),
-                  ),
-                  
-                  // Top Controls (Video title and additional controls)
-                  if (_showControls)
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.black.withValues(alpha: 0.7),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                        child: Padding(
-                          padding: ResponsiveHelper.getResponsivePadding(context).copyWith(
-                            left: 70, // Make space for the permanent back button
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  widget.video.name,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  // Center Play/Pause Button
-                  if (_showControls && _isInitialized)
-                    Center(
-                      child: GestureDetector(
-                        onTap: _togglePlayPause,
-                        child: Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            shape: BoxShape.circle,
-                          ),
-                          child: StreamBuilder(
-                            stream: _player.stream.playing,
-                            builder: (context, snapshot) {
-                              final isPlaying = snapshot.data ?? false;
-                              return Icon(
-                                isPlaying ? Icons.pause : Icons.play_arrow,
-                                color: Colors.white,
-                                size: 40,
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  // Speed Control (only when controls visible)
-                  if (_showControls && _isInitialized)
-                    Positioned(
-                      bottom: 16,
-                      right: 16,
-                      child: GestureDetector(
-                        onTap: _showSpeedDialog,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.7),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: StreamBuilder(
-                            stream: _player.stream.rate,
-                            builder: (context, snapshot) {
-                              final rate = snapshot.data ?? 1.0;
-                              return Text(
-                                '${rate}x',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+                  onPressed: () => Navigator.pop(context),
+                  tooltip: 'Back to video list',
+                ),
               ),
             ),
             
-            // Persistent Bottom Scrubber (Always Visible)
+            // Mute/Unmute Button (Top-Right)
+            Positioned(
+              top: 16,
+              right: 16,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  shape: BoxShape.circle,
+                ),
+                child: StreamBuilder(
+                  stream: _player.stream.volume,
+                  builder: (context, snapshot) {
+                    final volume = snapshot.data ?? 1.0;
+                    final isMuted = volume == 0.0;
+                    return IconButton(
+                      icon: Icon(
+                        isMuted ? Icons.volume_off : Icons.volume_up,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                      onPressed: _toggleMute,
+                      tooltip: isMuted ? 'Unmute' : 'Mute',
+                    );
+                  },
+                ),
+              ),
+            ),
+            
+            // Video Scrubber Overlay (Bottom with 50% opacity)
             if (_isInitialized)
-              StreamBuilder(
-                stream: _player.stream.position,
-                builder: (context, positionSnapshot) {
-                  return StreamBuilder(
-                    stream: _player.stream.duration,
-                    builder: (context, durationSnapshot) {
-                      final position = positionSnapshot.data ?? Duration.zero;
-                      final duration = durationSnapshot.data ?? Duration.zero;
-                      
-                      return PersistentVideoScrubber(
-                        player: _player,
-                        duration: duration,
-                        position: position,
-                        onSeek: (newPosition) {
-                          _player.seek(newPosition);
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5), // 50% opacity
+                  ),
+                  child: StreamBuilder(
+                    stream: _player.stream.position,
+                    builder: (context, positionSnapshot) {
+                      return StreamBuilder(
+                        stream: _player.stream.duration,
+                        builder: (context, durationSnapshot) {
+                          final position = positionSnapshot.data ?? Duration.zero;
+                          final duration = durationSnapshot.data ?? Duration.zero;
+                          
+                          return PersistentVideoScrubber(
+                            player: _player,
+                            duration: duration,
+                            position: position,
+                            onSeek: (newPosition) {
+                              _player.seek(newPosition);
+                            },
+                          );
                         },
                       );
                     },
-                  );
-                },
+                  ),
+                ),
               ),
           ],
         ),
