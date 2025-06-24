@@ -31,13 +31,22 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
     _initializePlayer();
     _hideControlsTimer();
   }
-
   void _initializePlayer() async {
     try {
       _player = Player();
       _controller = VideoController(_player);
       
-      await _player.open(Media('file:///${widget.video.path}'));
+      // Format the file path properly for MediaKit
+      String videoPath = widget.video.path;
+      if (Platform.isWindows) {
+        // For Windows, use file:/// protocol
+        videoPath = 'file:///${widget.video.path}';
+      } else {
+        // For Android/other platforms, just use the file path
+        videoPath = widget.video.path;
+      }
+      
+      await _player.open(Media(videoPath));
       
       setState(() {
         _isInitialized = true;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-// import 'package:file_picker/file_picker.dart';  // Temporarily disabled for Android compatibility
+import 'package:file_picker/file_picker.dart';
 import 'dart:io';
-import 'package:video_thumbnail/video_thumbnail.dart';
+// import 'package:video_thumbnail/video_thumbnail.dart'; // TODO: Not supported on Windows
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 
@@ -36,39 +36,51 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
       // For now, we'll start with an empty list
       setState(() => _videos = []);
     } catch (e) {
-      _showErrorSnackBar('Failed to load videos: $e');
-    } finally {
+      _showErrorSnackBar('Failed to load videos: $e');    } finally {
       setState(() => _isLoading = false);
     }  }
 
   Future<void> _importVideos() async {
-    // Temporarily disabled - file_picker not compatible with current Android build
-    _showErrorSnackBar('Video import temporarily disabled for Android compatibility');
-    /*
     try {
+      // Show loading state
+      setState(() => _isLoading = true);
+      
       final result = await FilePicker.platform.pickFiles(
         type: FileType.video,
         allowMultiple: true,
-        allowedExtensions: ['mp4', 'avi', 'mov', 'mkv'],
+        allowedExtensions: ['mp4', 'avi', 'mov', 'mkv', 'wmv', '3gp'],
       );
 
       if (result != null && result.files.isNotEmpty) {
-        setState(() => _isLoading = true);
+        int successCount = 0;
+        int totalCount = result.files.length;
         
         for (final file in result.files) {
           if (file.path != null) {
-            await _processVideoFile(file.path!);
+            try {
+              await _processVideoFile(file.path!);
+              successCount++;
+            } catch (e) {
+              debugPrint('Failed to process ${file.name}: $e');
+            }
           }
         }
         
-        setState(() => _isLoading = false);
-        _showSuccessSnackBar('${result.files.length} video(s) imported successfully');
+        if (successCount > 0) {
+          _showSuccessSnackBar('$successCount of $totalCount video(s) imported successfully');
+        } else {
+          _showErrorSnackBar('Failed to import any videos. Please check file formats.');
+        }
+      } else {
+        // User cancelled the picker
+        debugPrint('File picker cancelled by user');
       }
     } catch (e) {
+      debugPrint('File picker error: $e');
+      _showErrorSnackBar('Failed to open file picker: ${e.toString()}');
+    } finally {
       setState(() => _isLoading = false);
-      _showErrorSnackBar('Failed to import videos: $e');
     }
-    */
   }
 
   Future<void> _processVideoFile(String filePath) async {
@@ -89,11 +101,11 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
         duration: const Duration(seconds: 0), // TODO: Get actual duration
         addedDate: DateTime.now(),
         sizeInBytes: fileSize,
-      );
-      
+      );      
       setState(() {
         _videos.add(videoItem);
-      });    } catch (e) {
+      });
+    } catch (e) {
       debugPrint('Error processing video file: $e');
     }
   }
@@ -105,19 +117,14 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
       if (!await thumbnailDir.exists()) {
         await thumbnailDir.create(recursive: true);
       }
-      
-      final fileName = path.basenameWithoutExtension(videoPath);
+        final fileName = path.basenameWithoutExtension(videoPath);
       final thumbnailPath = '${thumbnailDir.path}/$fileName.jpg';
       
-      await VideoThumbnail.thumbnailFile(
-        video: videoPath,
-        thumbnailPath: thumbnailPath,
-        imageFormat: ImageFormat.JPEG,
-        maxHeight: 200,
-        quality: 75,
-      );
+      // TODO: Add thumbnail generation for all platforms
+      // video_thumbnail package doesn't support Windows yet
       
-      return thumbnailPath;    } catch (e) {
+      return thumbnailPath;
+    } catch (e) {
       debugPrint('Error generating thumbnail: $e');
       return null;
     }
@@ -252,14 +259,14 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
 
     if (_videos.isEmpty) {
       return _buildEmptyState();
-    }
-
-    return VideoGridView(
+    }    return VideoGridView(
       videos: _videos,
-      selectedVideoIds: _selectedVideoIds,      onVideoTap: (video) {
+      selectedVideoIds: _selectedVideoIds,
+      onVideoTap: (video) {
         if (_isSelectionMode) {
           _toggleSelection(video.id);
-        } else {          // Navigate to video player
+        } else {
+          // Navigate to video player
           Navigator.push(
             context,
             MaterialPageRoute(
