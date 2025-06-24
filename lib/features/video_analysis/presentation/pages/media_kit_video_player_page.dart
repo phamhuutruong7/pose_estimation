@@ -5,6 +5,7 @@ import 'dart:io';
 
 import '../../../../core/utils/responsive_helper.dart';
 import '../../domain/entities/video_item.dart';
+import '../widgets/ruler_scrubber.dart';
 
 class MediaKitVideoPlayerPage extends StatefulWidget {
   final VideoItem video;
@@ -106,7 +107,6 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
       ),
     );
   }
-
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -126,21 +126,6 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
     );
   }
 
-  String _formatDuration(Duration duration) {
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-    
-    if (hours > 0) {
-      return '${hours.toString().padLeft(2, '0')}:'
-             '${minutes.toString().padLeft(2, '0')}:'
-             '${seconds.toString().padLeft(2, '0')}';
-    } else {
-      return '${minutes.toString().padLeft(2, '0')}:'
-             '${seconds.toString().padLeft(2, '0')}';
-    }
-  }
-
   @override
   void dispose() {
     _player.dispose();
@@ -153,8 +138,7 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
       backgroundColor: Colors.black,
       body: SafeArea(
         child: Stack(
-          children: [
-            // Video Player
+          children: [            // Video Player
             Center(
               child: _isInitialized
                   ? GestureDetector(
@@ -164,7 +148,28 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
                   : _buildLoadingState(),
             ),
             
-            // Top Controls (Back button and video title)
+            // Permanent Back Button (Always Visible)
+            Positioned(
+              top: 16,
+              left: 16,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.arrow_back,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  tooltip: 'Back to video list',
+                ),
+              ),
+            ),
+            
+            // Top Controls (Video title and additional controls)            // Top Controls (Video title and additional controls)
             if (_showControls)
               Positioned(
                 top: 0,
@@ -182,18 +187,11 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
                     ),
                   ),
                   child: Padding(
-                    padding: ResponsiveHelper.getResponsivePadding(context),
+                    padding: ResponsiveHelper.getResponsivePadding(context).copyWith(
+                      left: 70, // Make space for the permanent back button
+                    ),
                     child: Row(
                       children: [
-                        IconButton(
-                          icon: const Icon(
-                            Icons.arrow_back,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             widget.video.name,
@@ -237,9 +235,7 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
                     ),
                   ),
                 ),
-              ),
-
-            // Bottom Controls
+              ),            // Bottom Controls
             if (_showControls && _isInitialized)
               Positioned(
                 bottom: 0,
@@ -261,20 +257,11 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Time and speed controls
+                        // Speed control button
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            StreamBuilder(
-                              stream: _player.stream.position,
-                              builder: (context, snapshot) {
-                                final position = snapshot.data ?? Duration.zero;
-                                return Text(
-                                  _formatDuration(position),
-                                  style: const TextStyle(color: Colors.white),
-                                );
-                              },
-                            ),
+                            const Spacer(),
                             GestureDetector(
                               onTap: _showSpeedDialog,
                               child: Container(
@@ -292,26 +279,21 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
                                     final rate = snapshot.data ?? 1.0;
                                     return Text(
                                       '${rate}x',
-                                      style: const TextStyle(color: Colors.white),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     );
                                   },
                                 ),
                               ),
                             ),
-                            StreamBuilder(
-                              stream: _player.stream.duration,
-                              builder: (context, snapshot) {
-                                final duration = snapshot.data ?? Duration.zero;
-                                return Text(
-                                  _formatDuration(duration),
-                                  style: const TextStyle(color: Colors.white),
-                                );
-                              },
-                            ),
+                            const Spacer(),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        // Progress slider
+                        const SizedBox(height: 16),
+                        
+                        // Custom Ruler Scrubber
                         StreamBuilder(
                           stream: _player.stream.position,
                           builder: (context, positionSnapshot) {
@@ -321,18 +303,14 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
                                 final position = positionSnapshot.data ?? Duration.zero;
                                 final duration = durationSnapshot.data ?? Duration.zero;
                                 
-                                return Slider(
-                                  value: duration.inMilliseconds > 0 
-                                      ? position.inMilliseconds / duration.inMilliseconds 
-                                      : 0.0,
-                                  onChanged: (value) {
-                                    final newPosition = Duration(
-                                      milliseconds: (duration.inMilliseconds * value).round(),
-                                    );
+                                return RulerScrubber(
+                                  player: _player,
+                                  duration: duration,
+                                  position: position,
+                                  onSeek: (newPosition) {
                                     _player.seek(newPosition);
                                   },
-                                  activeColor: Theme.of(context).primaryColor,
-                                  inactiveColor: Colors.white.withValues(alpha: 0.3),
+                                  enableScrubbing: true,
                                 );
                               },
                             );
