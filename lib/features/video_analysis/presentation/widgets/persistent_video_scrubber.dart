@@ -101,15 +101,14 @@ class _PersistentVideoScrubberState extends State<PersistentVideoScrubber> {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Remove the thin progress bar at top since we have the detailed scrubber
-          
-          // Current time display
+            // Current time display
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  _formatDuration(currentPosition),
+                  _formatCurrentPosition(currentPosition),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
@@ -246,35 +245,38 @@ class _PersistentVideoScrubberState extends State<PersistentVideoScrubber> {
       ),
     );
   }
-
-  String _formatDuration(Duration duration) {
+  String _formatCurrentPosition(Duration duration) {
     final hours = duration.inHours;
     final minutes = duration.inMinutes.remainder(60);
     final seconds = duration.inSeconds.remainder(60);
     final milliseconds = duration.inMilliseconds.remainder(1000);
 
-    if (_isDragging) {
-      // Show more precision when scrubbing
-      if (hours > 0) {
-        return '${hours.toString().padLeft(2, '0')}:'
-               '${minutes.toString().padLeft(2, '0')}:'
-               '${seconds.toString().padLeft(2, '0')}'
-               '.${(milliseconds / 100).floor()}';
-      } else {
-        return '${minutes.toString().padLeft(2, '0')}:'
-               '${seconds.toString().padLeft(2, '0')}'
-               '.${(milliseconds / 100).floor()}';
-      }
+    // Always show 3-digit milliseconds for current position
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:'
+             '${minutes.toString().padLeft(2, '0')}:'
+             '${seconds.toString().padLeft(2, '0')}'
+             '.${milliseconds.toString().padLeft(3, '0')}';
     } else {
-      // Normal time display
-      if (hours > 0) {
-        return '${hours.toString().padLeft(2, '0')}:'
-               '${minutes.toString().padLeft(2, '0')}:'
-               '${seconds.toString().padLeft(2, '0')}';
-      } else {
-        return '${minutes.toString().padLeft(2, '0')}:'
-               '${seconds.toString().padLeft(2, '0')}';
-      }
+      return '${minutes.toString().padLeft(2, '0')}:'
+             '${seconds.toString().padLeft(2, '0')}'
+             '.${milliseconds.toString().padLeft(3, '0')}';
+    }
+  }
+
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+
+    // Simple format for total duration (no milliseconds)
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:'
+             '${minutes.toString().padLeft(2, '0')}:'
+             '${seconds.toString().padLeft(2, '0')}';
+    } else {
+      return '${minutes.toString().padLeft(2, '0')}:'
+             '${seconds.toString().padLeft(2, '0')}';
     }
   }
 }
