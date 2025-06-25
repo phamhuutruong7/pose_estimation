@@ -61,15 +61,27 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
         _showErrorDialog('Video playback failed: ${e.toString()}');
       }
     }
-  }  void _togglePlayPause() {
+  }  void _togglePlayPause() async {
+    debugPrint('Toggle play/pause triggered - Current playing state: ${_player.state.playing}');
+    
+    // Show button immediately
     setState(() {
       _showPlayPauseButton = true;
     });
 
-    if (_player.state.playing) {
-      _player.pause();
-    } else {
-      _player.play();
+    try {
+      // Use async operations to ensure state is properly updated
+      if (_player.state.playing) {
+        debugPrint('Pausing video...');
+        await _player.pause();
+      } else {
+        debugPrint('Playing video...');
+        await _player.play();
+      }
+      
+      debugPrint('Toggle completed - New playing state: ${_player.state.playing}');
+    } catch (e) {
+      debugPrint('Error toggling play/pause: $e');
     }
 
     // Hide the button after 1 second
@@ -130,6 +142,7 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
               child: _isInitialized
                   ? GestureDetector(
                       onTap: _togglePlayPause, // Direct tap to play/pause
+                      behavior: HitTestBehavior.opaque, // Ensure taps are captured
                       child: Video(
                         controller: _controller,
                         controls: NoVideoControls, // Disable all default controls
@@ -185,8 +198,7 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
                   },
                 ),
               ),            ),
-            
-            // Big Play/Pause Button (Center, appears temporarily)
+              // Big Play/Pause Button (Center, appears temporarily)
             if (_showPlayPauseButton && _isInitialized)
               Center(
                 child: AnimatedOpacity(
@@ -209,7 +221,10 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
                     child: StreamBuilder(
                       stream: _player.stream.playing,
                       builder: (context, snapshot) {
-                        final isPlaying = snapshot.data ?? false;
+                        // Use the latest state from the stream, fallback to player state
+                        final isPlaying = snapshot.hasData 
+                            ? snapshot.data! 
+                            : _player.state.playing;
                         return Icon(
                           isPlaying ? Icons.pause : Icons.play_arrow,
                           color: Colors.white,
