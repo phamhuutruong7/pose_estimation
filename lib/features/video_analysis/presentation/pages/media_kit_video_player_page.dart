@@ -125,13 +125,15 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
       backgroundColor: Colors.black,
       body: SafeArea(
         child: Stack(
-          children: [
-            // Full-height Video Player
+          children: [            // Full-height Video Player
             Positioned.fill(
               child: _isInitialized
                   ? GestureDetector(
                       onTap: _togglePlayPause, // Direct tap to play/pause
-                      child: Video(controller: _controller),
+                      child: Video(
+                        controller: _controller,
+                        controls: NoVideoControls, // Disable all default controls
+                      ),
                     )
                   : _buildLoadingState(),
             ),
