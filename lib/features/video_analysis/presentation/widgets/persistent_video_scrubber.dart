@@ -126,10 +126,9 @@ class _PersistentVideoScrubberState extends State<PersistentVideoScrubber> {
               ],
             ),
           ),
-          
-          // Detailed scrubber with fine time divisions
+            // Detailed scrubber with fine time divisions
           Container(
-            height: 80,
+            height: 40, // Reduced from 80 to 40 (half the height)
             margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -194,10 +193,9 @@ class _PersistentVideoScrubberState extends State<PersistentVideoScrubber> {
       ),
     );
   }
-
   Widget _buildFineRulerMarks(double totalWidth) {
     return CustomPaint(
-      size: Size(totalWidth, 80),
+      size: Size(totalWidth, 40), // Reduced from 80 to 40
       painter: FineRulerMarksPainter(
         totalDuration: widget.duration,
         totalWidth: totalWidth,
@@ -205,16 +203,15 @@ class _PersistentVideoScrubberState extends State<PersistentVideoScrubber> {
       ),
     );
   }
-
   Widget _buildScrubberHandle(double progress, double totalWidth) {
     final handlePosition = (progress * totalWidth).clamp(8.0, totalWidth - 8.0);
     
     return Positioned(
       left: handlePosition - 8,
-      top: 24,
+      top: 8, // Adjusted from 24 to 8 for smaller height
       child: Container(
         width: 16,
-        height: 32,
+        height: 24, // Reduced from 32 to 24
         decoration: BoxDecoration(
           color: _isDragging 
               ? Colors.white
@@ -237,7 +234,7 @@ class _PersistentVideoScrubberState extends State<PersistentVideoScrubber> {
         child: Center(
           child: Container(
             width: 3,
-            height: 16,
+            height: 12, // Reduced from 16 to 12
             decoration: BoxDecoration(
               color: _isDragging
                   ? Theme.of(context).primaryColor
@@ -326,16 +323,14 @@ class FineRulerMarksPainter extends CustomPainter {
     }
 
     // Add even finer marks when dragging for precision
-    double microInterval = secondaryInterval / 5; // Very fine marks
-
-    // Draw micro marks (finest)
+    double microInterval = secondaryInterval / 5; // Very fine marks    // Draw micro marks (finest)
     if (isDragging) {
       paint.color = Colors.white.withValues(alpha: 0.2);
       for (double t = 0; t <= durationSeconds; t += microInterval) {
         final x = (t / durationSeconds) * totalWidth;
         if (x <= totalWidth) {
           canvas.drawLine(
-            Offset(x, size.height - 5),
+            Offset(x, size.height - 3), // Adjusted for smaller height
             Offset(x, size.height),
             paint,
           );
@@ -351,7 +346,7 @@ class FineRulerMarksPainter extends CustomPainter {
         final x = (t / durationSeconds) * totalWidth;
         if (x <= totalWidth) {
           canvas.drawLine(
-            Offset(x, size.height - 12),
+            Offset(x, size.height - 6), // Adjusted for smaller height
             Offset(x, size.height),
             paint,
           );
@@ -367,7 +362,7 @@ class FineRulerMarksPainter extends CustomPainter {
       if (x <= totalWidth) {
         // Draw major tick mark
         canvas.drawLine(
-          Offset(x, size.height - 20),
+          Offset(x, size.height - 10), // Adjusted for smaller height
           Offset(x, size.height),
           paint,
         );
@@ -379,14 +374,14 @@ class FineRulerMarksPainter extends CustomPainter {
             text: timeLabel,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.9),
-              fontSize: 10,
+              fontSize: 9, // Slightly smaller font for smaller height
               fontWeight: FontWeight.w500,
             ),
           );
           textPainter.layout();
           
           final labelX = (x - textPainter.width / 2).clamp(0.0, totalWidth - textPainter.width);
-          textPainter.paint(canvas, Offset(labelX, 5));
+          textPainter.paint(canvas, Offset(labelX, 2)); // Adjusted position
         }
       }
     }
