@@ -39,17 +39,28 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
       _showErrorSnackBar('Failed to load videos: $e');    } finally {
       setState(() => _isLoading = false);
     }  }
-
   Future<void> _importVideos() async {
     try {
       // Show loading state
       setState(() => _isLoading = true);
       
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.video,
-        allowMultiple: true,
-        allowedExtensions: ['mp4', 'avi', 'mov', 'mkv', 'wmv', '3gp'],
-      );
+      // Use different picker strategies based on platform
+      FilePickerResult? result;
+      
+      if (Platform.isAndroid) {
+        // For Android, use custom type with specific extensions
+        result = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowMultiple: true,
+          allowedExtensions: ['mp4', 'avi', 'mov', 'mkv', 'wmv', '3gp'],
+        );
+      } else {
+        // For other platforms (Windows, iOS, etc.), use video type
+        result = await FilePicker.platform.pickFiles(
+          type: FileType.video,
+          allowMultiple: true,
+        );
+      }
 
       if (result != null && result.files.isNotEmpty) {
         int successCount = 0;
@@ -77,7 +88,17 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
       }
     } catch (e) {
       debugPrint('File picker error: $e');
-      _showErrorSnackBar('Failed to open file picker: ${e.toString()}');
+      String errorMessage = 'Failed to open file picker';
+      
+      if (e.toString().contains('Permission denied')) {
+        errorMessage = 'Permission denied. Please grant storage access in Settings.';
+      } else if (e.toString().contains('allowedExtensions')) {
+        errorMessage = 'File type configuration error. Please try again.';
+      } else {
+        errorMessage = 'Failed to open file picker: ${e.toString()}';
+      }
+      
+      _showErrorSnackBar(errorMessage);
     } finally {
       setState(() => _isLoading = false);
     }
