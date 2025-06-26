@@ -5,6 +5,7 @@ import 'package:media_kit/media_kit.dart';
 
 import 'features/pose_detection/presentation/bloc/pose_detection_bloc.dart';
 import 'features/pose_detection/presentation/pages/home_page.dart';
+import 'features/video_analysis/presentation/bloc/video_analysis_bloc.dart';
 import 'injection_container.dart' as di;
 
 void main() async {
@@ -50,8 +51,11 @@ class MyApp extends StatelessWidget {
           child: child!,
         );
       },
-      home: BlocProvider(
-        create: (_) => di.sl<PoseDetectionBloc>(),
+      home: MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (_) => di.sl<PoseDetectionBloc>()),
+          BlocProvider(create: (_) => di.sl<VideoAnalysisBloc>()),
+        ],
         child: const HomePage(),
       ),
     );

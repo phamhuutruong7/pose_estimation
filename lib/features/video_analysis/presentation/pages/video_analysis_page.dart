@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'dart:io';
-// import 'package:video_thumbnail/video_thumbnail.dart'; // TODO: Not supported on Windows
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/responsive_helper.dart';
 import '../../domain/entities/video_item.dart';
+import '../bloc/video_analysis_event.dart';
+import '../bloc/video_analysis_state.dart';
+import '../bloc/video_analysis_bloc.dart';
 import '../widgets/video_grid_view.dart';
 import 'media_kit_video_player_page.dart';
 
@@ -18,137 +17,18 @@ class VideoAnalysisPage extends StatefulWidget {
 }
 
 class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
-  List<VideoItem> _videos = [];
   Set<String> _selectedVideoIds = {};
-  bool _isLoading = false;
   bool _isSelectionMode = false;
 
   @override
   void initState() {
     super.initState();
-    _loadSavedVideos();
-  }
-
-  Future<void> _loadSavedVideos() async {
-    setState(() => _isLoading = true);
-    try {
-      // TODO: Load videos from local storage/database
-      // For now, we'll start with an empty list
-      setState(() => _videos = []);
-    } catch (e) {
-      _showErrorSnackBar('Failed to load videos: $e');    } finally {
-      setState(() => _isLoading = false);
-    }  }
-  Future<void> _importVideos() async {
-    try {
-      // Show loading state
-      setState(() => _isLoading = true);
-      
-      // Use different picker strategies based on platform
-      FilePickerResult? result;
-      
-      if (Platform.isAndroid) {
-        // For Android, use custom type with specific extensions
-        result = await FilePicker.platform.pickFiles(
-          type: FileType.custom,
-          allowMultiple: true,
-          allowedExtensions: ['mp4', 'avi', 'mov', 'mkv', 'wmv', '3gp'],
-        );
-      } else {
-        // For other platforms (Windows, iOS, etc.), use video type
-        result = await FilePicker.platform.pickFiles(
-          type: FileType.video,
-          allowMultiple: true,
-        );
+    // Delay BLoC access to ensure provider is available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<VideoAnalysisBloc>().add(LoadVideoHistoryEvent());
       }
-
-      if (result != null && result.files.isNotEmpty) {
-        int successCount = 0;
-        int totalCount = result.files.length;
-        
-        for (final file in result.files) {
-          if (file.path != null) {
-            try {
-              await _processVideoFile(file.path!);
-              successCount++;
-            } catch (e) {
-              debugPrint('Failed to process ${file.name}: $e');
-            }
-          }
-        }
-        
-        if (successCount > 0) {
-          _showSuccessSnackBar('$successCount of $totalCount video(s) imported successfully');
-        } else {
-          _showErrorSnackBar('Failed to import any videos. Please check file formats.');
-        }
-      } else {
-        // User cancelled the picker
-        debugPrint('File picker cancelled by user');
-      }
-    } catch (e) {
-      debugPrint('File picker error: $e');
-      String errorMessage = 'Failed to open file picker';
-      
-      if (e.toString().contains('Permission denied')) {
-        errorMessage = 'Permission denied. Please grant storage access in Settings.';
-      } else if (e.toString().contains('allowedExtensions')) {
-        errorMessage = 'File type configuration error. Please try again.';
-      } else {
-        errorMessage = 'Failed to open file picker: ${e.toString()}';
-      }
-      
-      _showErrorSnackBar(errorMessage);
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _processVideoFile(String filePath) async {
-    try {
-      final file = File(filePath);
-      final fileName = path.basename(filePath);
-      final fileSize = await file.length();
-      
-      // Generate thumbnail
-      final thumbnailPath = await _generateThumbnail(filePath);
-      
-      // Create video item
-      final videoItem = VideoItem(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        name: fileName,
-        path: filePath,
-        thumbnailPath: thumbnailPath,
-        duration: const Duration(seconds: 0), // TODO: Get actual duration
-        addedDate: DateTime.now(),
-        sizeInBytes: fileSize,
-      );      
-      setState(() {
-        _videos.add(videoItem);
-      });
-    } catch (e) {
-      debugPrint('Error processing video file: $e');
-    }
-  }
-
-  Future<String?> _generateThumbnail(String videoPath) async {
-    try {
-      final appDir = await getApplicationDocumentsDirectory();
-      final thumbnailDir = Directory('${appDir.path}/thumbnails');
-      if (!await thumbnailDir.exists()) {
-        await thumbnailDir.create(recursive: true);
-      }
-        final fileName = path.basenameWithoutExtension(videoPath);
-      final thumbnailPath = '${thumbnailDir.path}/$fileName.jpg';
-      
-      // TODO: Add thumbnail generation for all platforms
-      // video_thumbnail package doesn't support Windows yet
-      
-      return thumbnailPath;
-    } catch (e) {
-      debugPrint('Error generating thumbnail: $e');
-      return null;
-    }
+    });
   }
 
   void _toggleSelection(String videoId) {
@@ -180,7 +60,11 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
           ),
           TextButton(
             onPressed: () {
-              _performDeleteVideos();
+              // Dispatch delete event to BLoC
+              for (String videoId in _selectedVideoIds) {
+                context.read<VideoAnalysisBloc>().add(RemoveVideoFromHistoryEvent(videoId));
+              }
+              _clearSelection();
               Navigator.pop(context);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -189,15 +73,6 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
         ],
       ),
     );
-  }
-
-  void _performDeleteVideos() {
-    setState(() {
-      _videos.removeWhere((video) => _selectedVideoIds.contains(video.id));
-      _selectedVideoIds.clear();
-      _isSelectionMode = false;
-    });
-    _showSuccessSnackBar('Videos deleted successfully');
   }
 
   void _clearSelection() {
@@ -247,25 +122,51 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
             ),
           ] else ...[
             IconButton(
-              onPressed: _importVideos,
+              onPressed: () {
+                context.read<VideoAnalysisBloc>().add(ImportVideosEvent());
+              },
               icon: const Icon(Icons.add),
               tooltip: 'Import videos',
             ),
           ],
         ],
       ),
-      body: _buildBody(),
-      floatingActionButton: _videos.isNotEmpty && !_isSelectionMode
-          ? FloatingActionButton(
-              onPressed: _importVideos,
-              child: const Icon(Icons.add),
-            )
-          : null,
+      body: BlocConsumer<VideoAnalysisBloc, VideoAnalysisState>(
+        listener: (context, state) {
+          if (state is VideoAnalysisError) {
+            _showErrorSnackBar(state.message);
+          } else if (state is VideoImportSuccess) {
+            _showSuccessSnackBar(state.message);
+            // Clear selection after successful operations
+            _clearSelection();
+          } else if (state is VideoRemovalSuccess) {
+            _showSuccessSnackBar('Videos deleted successfully');
+            // Clear selection after successful removal
+            _clearSelection();
+          }
+        },
+        builder: (context, state) {
+          return _buildBody(state);
+        },
+      ),
+      floatingActionButton: BlocBuilder<VideoAnalysisBloc, VideoAnalysisState>(
+        builder: (context, state) {
+          final videos = _getVideosFromState(state);
+          return videos.isNotEmpty && !_isSelectionMode
+              ? FloatingActionButton(
+                  onPressed: () {
+                    context.read<VideoAnalysisBloc>().add(ImportVideosEvent());
+                  },
+                  child: const Icon(Icons.add),
+                )
+              : const SizedBox.shrink();
+        },
+      ),
     );
   }
 
-  Widget _buildBody() {
-    if (_isLoading) {
+  Widget _buildBody(VideoAnalysisState state) {
+    if (state is VideoAnalysisLoading) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -278,15 +179,21 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
       );
     }
 
-    if (_videos.isEmpty) {
+    final videos = _getVideosFromState(state);
+    
+    if (videos.isEmpty) {
       return _buildEmptyState();
-    }    return VideoGridView(
-      videos: _videos,
+    }
+
+    return VideoGridView(
+      videos: videos,
       selectedVideoIds: _selectedVideoIds,
       onVideoTap: (video) {
         if (_isSelectionMode) {
           _toggleSelection(video.id);
         } else {
+          // Save video to history before playing
+          context.read<VideoAnalysisBloc>().add(SaveVideoToHistoryEvent(video));
           // Navigate to video player
           Navigator.push(
             context,
@@ -301,6 +208,17 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
       },
       onSelectionToggle: _toggleSelection,
     );
+  }
+
+  List<VideoItem> _getVideosFromState(VideoAnalysisState state) {
+    if (state is VideoHistoryLoaded) {
+      return state.videos;
+    } else if (state is VideoImportSuccess) {
+      return state.videos;
+    } else if (state is VideoRemovalSuccess) {
+      return state.videos;
+    }
+    return [];
   }
 
   Widget _buildEmptyState() {
@@ -335,7 +253,9 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
             ),
             SizedBox(height: ResponsiveHelper.getSpacing(context, large: true) * 2),
             ElevatedButton.icon(
-              onPressed: _importVideos,
+              onPressed: () {
+                context.read<VideoAnalysisBloc>().add(ImportVideosEvent());
+              },
               icon: const Icon(Icons.add),
               label: const Text('Import Videos'),
               style: ElevatedButton.styleFrom(
