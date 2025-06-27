@@ -21,87 +21,83 @@ class PersistentVideoScrubber extends StatefulWidget {
 
 class _PersistentVideoScrubberState extends State<PersistentVideoScrubber> {
   bool _isDragging = false;
-  Duration _scrubbingPosition = Duration.zero;
   bool _wasPlayingBeforeScrub = false;
-
+  
+  // Touch and drag state
+  double? _dragStartX;
+  Duration? _dragStartTime;
+  
+  // 10 seconds visible window
+  static const double _visibleDurationSeconds = 10.0;
+  
   @override
   void initState() {
     super.initState();
-    _scrubbingPosition = widget.position;
   }
 
   @override
   void didUpdateWidget(PersistentVideoScrubber oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!_isDragging) {
-      _scrubbingPosition = widget.position;
-    }
   }
 
-  void _startScrubbing(double localX, double totalWidth) {
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  void _handlePanStart(DragStartDetails details) {
     setState(() {
       _isDragging = true;
       _wasPlayingBeforeScrub = widget.player.state.playing;
+      _dragStartX = details.localPosition.dx;
+      _dragStartTime = widget.position;
     });
     
-    // Pause video during scrubbing
     if (_wasPlayingBeforeScrub) {
       widget.player.pause();
     }
+  }
+
+  void _handlePanUpdate(DragUpdateDetails details, double screenWidth) {
+    if (!_isDragging || _dragStartX == null || _dragStartTime == null) return;
     
-    _updateScrubbingPosition(localX, totalWidth);
-  }
-
-  void _updateScrubbing(double localX, double totalWidth) {
-    if (!_isDragging) return;
-    _updateScrubbingPosition(localX, totalWidth);
-  }
-
-  void _updateScrubbingPosition(double localX, double totalWidth) {
-    final progress = (localX / totalWidth).clamp(0.0, 1.0);
-    final newPosition = Duration(
-      milliseconds: (widget.duration.inMilliseconds * progress).round(),
+    // Calculate how far we've dragged horizontally
+    // Invert deltaX: drag left = fast forward, drag right = rewind
+    final deltaX = _dragStartX! - details.localPosition.dx;
+    
+    // Convert deltaX to time delta based on the 10-second visible window
+    // More responsive: each pixel represents a smaller time unit
+    final pixelsPerSecond = screenWidth / _visibleDurationSeconds;
+    final deltaSeconds = deltaX / pixelsPerSecond;
+    final deltaTime = Duration(milliseconds: (deltaSeconds * 1000).round());
+    
+    // Calculate new time position
+    final newTime = Duration(
+      milliseconds: (_dragStartTime!.inMilliseconds + deltaTime.inMilliseconds)
+        .clamp(0, widget.duration.inMilliseconds)
     );
     
-    setState(() {
-      _scrubbingPosition = newPosition;
-    });
-    
-    // Update video frame immediately for preview
-    widget.onSeek(newPosition);
+    // Seek to the new position for real-time preview
+    widget.onSeek(newTime);
   }
 
-  void _endScrubbing() {
-    if (!_isDragging) return;
-    
+  void _handlePanEnd(DragEndDetails details) {
     setState(() {
       _isDragging = false;
+      _dragStartX = null;
+      _dragStartTime = null;
     });
     
-    // Keep video paused after scrubbing - user needs to manually play
-  }
-
-  void _handleTap(double localX, double totalWidth) {
-    final progress = (localX / totalWidth).clamp(0.0, 1.0);
-    final newPosition = Duration(
-      milliseconds: (widget.duration.inMilliseconds * progress).round(),
-    );
-    
-    widget.onSeek(newPosition);
+    // Keep video paused after scrubbing - user can tap play button to continue
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentPosition = _isDragging ? _scrubbingPosition : widget.position;
-    final progress = widget.duration.inMilliseconds > 0
-        ? currentPosition.inMilliseconds / widget.duration.inMilliseconds
-        : 0.0;    return Container(
+    return Container(
       color: Colors.transparent, // Make transparent since parent handles opacity
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Remove the thin progress bar at top since we have the detailed scrubber
-          
           // Current time display
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -109,7 +105,7 @@ class _PersistentVideoScrubberState extends State<PersistentVideoScrubber> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  _formatDuration(currentPosition),
+                  _formatCurrentPosition(widget.position),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
@@ -127,62 +123,82 @@ class _PersistentVideoScrubberState extends State<PersistentVideoScrubber> {
             ),
           ),
           
-          // Detailed scrubber with fine time divisions
+          // Fixed Timeline with Touch and Drag
           Container(
-            height: 80,
+            height: 40,
             margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                return GestureDetector(
-                  onTapDown: (details) {
-                    _handleTap(details.localPosition.dx, constraints.maxWidth);
-                  },
-                  onPanStart: (details) {
-                    _startScrubbing(details.localPosition.dx, constraints.maxWidth);
-                  },
-                  onPanUpdate: (details) {
-                    _updateScrubbing(details.localPosition.dx, constraints.maxWidth);
-                  },
-                  onPanEnd: (details) {
-                    _endScrubbing();
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
+                final screenWidth = constraints.maxWidth;
+                
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      width: 1,
                     ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
                     child: Stack(
                       children: [
-                        // Fine ruler marks
-                        _buildFineRulerMarks(constraints.maxWidth),
-                        
-                        // Progress fill
-                        Positioned.fill(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: FractionallySizedBox(
-                              widthFactor: progress.clamp(0.0, 1.0),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Theme.of(context).primaryColor.withValues(alpha: 0.4),
-                                      Theme.of(context).primaryColor.withValues(alpha: 0.7),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
+                        // Touch and drag sensitive timeline area
+                        GestureDetector(
+                          onPanStart: (details) {
+                            _handlePanStart(details);
+                          },
+                          onPanUpdate: (details) {
+                            _handlePanUpdate(details, screenWidth);
+                          },
+                          onPanEnd: (details) {
+                            _handlePanEnd(details);
+                          },
+                          child: Container(
+                            width: screenWidth,
+                            height: 40,
+                            child: CustomPaint(
+                              size: Size(screenWidth, 40),
+                              painter: ScrollableTimelinePainter(
+                                totalDuration: widget.duration,
+                                currentPosition: widget.position,
+                                totalWidth: screenWidth,
+                                isDragging: _isDragging,
                               ),
                             ),
                           ),
                         ),
                         
-                        // Scrubber handle
-                        _buildScrubberHandle(progress, constraints.maxWidth),
+                        // Fixed pivot indicator at left side (20% from left)
+                        Positioned(
+                          left: screenWidth * 0.2 - 6, // Center the 12px wide pivot
+                          top: 8,
+                          child: Container(
+                            width: 12,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                width: 2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.play_arrow,
+                              color: Colors.black,
+                              size: 8,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -195,100 +211,51 @@ class _PersistentVideoScrubberState extends State<PersistentVideoScrubber> {
     );
   }
 
-  Widget _buildFineRulerMarks(double totalWidth) {
-    return CustomPaint(
-      size: Size(totalWidth, 80),
-      painter: FineRulerMarksPainter(
-        totalDuration: widget.duration,
-        totalWidth: totalWidth,
-        isDragging: _isDragging,
-      ),
-    );
-  }
+  String _formatCurrentPosition(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+    final milliseconds = duration.inMilliseconds.remainder(1000);
 
-  Widget _buildScrubberHandle(double progress, double totalWidth) {
-    final handlePosition = (progress * totalWidth).clamp(8.0, totalWidth - 8.0);
-    
-    return Positioned(
-      left: handlePosition - 8,
-      top: 24,
-      child: Container(
-        width: 16,
-        height: 32,
-        decoration: BoxDecoration(
-          color: _isDragging 
-              ? Colors.white
-              : Theme.of(context).primaryColor,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: _isDragging
-                ? Theme.of(context).primaryColor
-                : Colors.white,
-            width: 2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.5),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Center(
-          child: Container(
-            width: 3,
-            height: 16,
-            decoration: BoxDecoration(
-              color: _isDragging
-                  ? Theme.of(context).primaryColor
-                  : Colors.white,
-              borderRadius: BorderRadius.circular(1.5),
-            ),
-          ),
-        ),
-      ),
-    );
+    // Always show 3-digit milliseconds for current position
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:'
+             '${minutes.toString().padLeft(2, '0')}:'
+             '${seconds.toString().padLeft(2, '0')}'
+             '.${milliseconds.toString().padLeft(3, '0')}';
+    } else {
+      return '${minutes.toString().padLeft(2, '0')}:'
+             '${seconds.toString().padLeft(2, '0')}'
+             '.${milliseconds.toString().padLeft(3, '0')}';
+    }
   }
 
   String _formatDuration(Duration duration) {
     final hours = duration.inHours;
     final minutes = duration.inMinutes.remainder(60);
     final seconds = duration.inSeconds.remainder(60);
-    final milliseconds = duration.inMilliseconds.remainder(1000);
 
-    if (_isDragging) {
-      // Show more precision when scrubbing
-      if (hours > 0) {
-        return '${hours.toString().padLeft(2, '0')}:'
-               '${minutes.toString().padLeft(2, '0')}:'
-               '${seconds.toString().padLeft(2, '0')}'
-               '.${(milliseconds / 100).floor()}';
-      } else {
-        return '${minutes.toString().padLeft(2, '0')}:'
-               '${seconds.toString().padLeft(2, '0')}'
-               '.${(milliseconds / 100).floor()}';
-      }
+    // Simple format for total duration (no milliseconds)
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:'
+             '${minutes.toString().padLeft(2, '0')}:'
+             '${seconds.toString().padLeft(2, '0')}';
     } else {
-      // Normal time display
-      if (hours > 0) {
-        return '${hours.toString().padLeft(2, '0')}:'
-               '${minutes.toString().padLeft(2, '0')}:'
-               '${seconds.toString().padLeft(2, '0')}';
-      } else {
-        return '${minutes.toString().padLeft(2, '0')}:'
-               '${seconds.toString().padLeft(2, '0')}';
-      }
+      return '${minutes.toString().padLeft(2, '0')}:'
+             '${seconds.toString().padLeft(2, '0')}';
     }
   }
 }
 
-class FineRulerMarksPainter extends CustomPainter {
+class ScrollableTimelinePainter extends CustomPainter {
   final Duration totalDuration;
+  final Duration currentPosition;
   final double totalWidth;
   final bool isDragging;
 
-  FineRulerMarksPainter({
+  ScrollableTimelinePainter({
     required this.totalDuration,
+    required this.currentPosition,
     required this.totalWidth,
     required this.isDragging,
   });
@@ -303,6 +270,13 @@ class FineRulerMarksPainter extends CustomPainter {
 
     final durationSeconds = totalDuration.inSeconds;
     if (durationSeconds == 0) return;
+
+    // Fixed pivot position (20% from left)
+    final pivotX = totalWidth * 0.2;
+    
+    // Current time in seconds
+    final currentSeconds = currentPosition.inSeconds.toDouble() + 
+                          (currentPosition.inMilliseconds % 1000) / 1000.0;
 
     // Calculate appropriate intervals based on video duration
     double primaryInterval; // seconds
@@ -328,17 +302,29 @@ class FineRulerMarksPainter extends CustomPainter {
     // Add even finer marks when dragging for precision
     double microInterval = secondaryInterval / 5; // Very fine marks
 
-    // Draw micro marks (finest)
+    // Scale: 10 seconds visible window with pivot fixed at 20%
+    final secondsPerPixel = 10.0 / totalWidth; // 10 seconds across full width
+    
+    // Calculate time range to show (centered around current time, but with pivot offset)
+    final pivotTimeOffset = (pivotX * secondsPerPixel); // How much time the pivot represents
+    final timeStart = currentSeconds - pivotTimeOffset;
+    final timeEnd = timeStart + 10.0; // 10 second window
+
+    // Draw micro marks (finest) - only when dragging
     if (isDragging) {
       paint.color = Colors.white.withValues(alpha: 0.2);
-      for (double t = 0; t <= durationSeconds; t += microInterval) {
-        final x = (t / durationSeconds) * totalWidth;
-        if (x <= totalWidth) {
-          canvas.drawLine(
-            Offset(x, size.height - 5),
-            Offset(x, size.height),
-            paint,
-          );
+      for (double t = (timeStart / microInterval).floor() * microInterval; 
+           t <= timeEnd; 
+           t += microInterval) {
+        if (t >= 0 && t <= durationSeconds) {
+          final x = pivotX + (t - currentSeconds) / secondsPerPixel;
+          if (x >= 0 && x <= totalWidth) {
+            canvas.drawLine(
+              Offset(x, size.height - 3),
+              Offset(x, size.height),
+              paint,
+            );
+          }
         }
       }
     }
@@ -346,12 +332,14 @@ class FineRulerMarksPainter extends CustomPainter {
     // Draw secondary marks (minor)
     paint.color = Colors.white.withValues(alpha: 0.4);
     paint.strokeWidth = 1;
-    for (double t = 0; t <= durationSeconds; t += secondaryInterval) {
-      if (t % primaryInterval != 0) { // Don't draw over primary marks
-        final x = (t / durationSeconds) * totalWidth;
-        if (x <= totalWidth) {
+    for (double t = (timeStart / secondaryInterval).floor() * secondaryInterval; 
+         t <= timeEnd; 
+         t += secondaryInterval) {
+      if (t >= 0 && t <= durationSeconds && t % primaryInterval != 0) {
+        final x = pivotX + (t - currentSeconds) / secondsPerPixel;
+        if (x >= 0 && x <= totalWidth) {
           canvas.drawLine(
-            Offset(x, size.height - 12),
+            Offset(x, size.height - 6),
             Offset(x, size.height),
             paint,
           );
@@ -362,31 +350,35 @@ class FineRulerMarksPainter extends CustomPainter {
     // Draw primary marks (major) with labels
     paint.color = Colors.white.withValues(alpha: 0.8);
     paint.strokeWidth = 2;
-    for (double t = 0; t <= durationSeconds; t += primaryInterval) {
-      final x = (t / durationSeconds) * totalWidth;
-      if (x <= totalWidth) {
-        // Draw major tick mark
-        canvas.drawLine(
-          Offset(x, size.height - 20),
-          Offset(x, size.height),
-          paint,
-        );
-
-        // Draw time label
-        if (x < totalWidth - 30) {
-          final timeLabel = _formatSecondsForLabel(t.round());
-          textPainter.text = TextSpan(
-            text: timeLabel,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-            ),
+    for (double t = (timeStart / primaryInterval).floor() * primaryInterval; 
+         t <= timeEnd; 
+         t += primaryInterval) {
+      if (t >= 0 && t <= durationSeconds) {
+        final x = pivotX + (t - currentSeconds) / secondsPerPixel;
+        if (x >= 0 && x <= totalWidth) {
+          // Draw major tick mark
+          canvas.drawLine(
+            Offset(x, size.height - 10),
+            Offset(x, size.height),
+            paint,
           );
-          textPainter.layout();
-          
-          final labelX = (x - textPainter.width / 2).clamp(0.0, totalWidth - textPainter.width);
-          textPainter.paint(canvas, Offset(labelX, 5));
+
+          // Draw time label
+          if (x >= 15 && x <= totalWidth - 15) { // Only show labels with enough space
+            final timeLabel = _formatSecondsForLabel(t.round());
+            textPainter.text = TextSpan(
+              text: timeLabel,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.9),
+                fontSize: 9,
+                fontWeight: FontWeight.w500,
+              ),
+            );
+            textPainter.layout();
+            
+            final labelX = (x - textPainter.width / 2).clamp(0.0, totalWidth - textPainter.width);
+            textPainter.paint(canvas, Offset(labelX, 2));
+          }
         }
       }
     }

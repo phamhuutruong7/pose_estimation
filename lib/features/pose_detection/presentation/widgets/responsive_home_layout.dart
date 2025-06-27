@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/responsive_helper.dart';
+import '../../../../injection_container.dart' as di;
+import '../../../video_analysis/presentation/bloc/video_analysis_bloc.dart';
 import '../../../video_analysis/presentation/pages/video_analysis_page.dart';
 
 class ResponsiveHomeLayout extends StatelessWidget {
@@ -114,7 +117,10 @@ class ResponsiveHomeLayout extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const VideoAnalysisPage(),
+                  builder: (context) => BlocProvider<VideoAnalysisBloc>(
+                    create: (_) => di.sl<VideoAnalysisBloc>(),
+                    child: const VideoAnalysisPage(),
+                  ),
                 ),
               );
             },

@@ -25,6 +25,7 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
   bool _isInitialized = false;
   bool _isMuted = false;
   double _volumeBeforeMute = 1.0;
+  bool _showPlayPauseButton = false;
 
   @override
   void initState() {
@@ -60,13 +61,37 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
         _showErrorDialog('Video playback failed: ${e.toString()}');
       }
     }
-  }
-  void _togglePlayPause() {
-    if (_player.state.playing) {
-      _player.pause();
-    } else {
-      _player.play();
+  }  void _togglePlayPause() async {
+    debugPrint('Toggle play/pause triggered - Current playing state: ${_player.state.playing}');
+    
+    // Show button immediately
+    setState(() {
+      _showPlayPauseButton = true;
+    });
+
+    try {
+      // Use async operations to ensure state is properly updated
+      if (_player.state.playing) {
+        debugPrint('Pausing video...');
+        await _player.pause();
+      } else {
+        debugPrint('Playing video...');
+        await _player.play();
+      }
+      
+      debugPrint('Toggle completed - New playing state: ${_player.state.playing}');
+    } catch (e) {
+      debugPrint('Error toggling play/pause: $e');
     }
+
+    // Hide the button after 1 second
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      if (mounted) {
+        setState(() {
+          _showPlayPauseButton = false;
+        });
+      }
+    });
   }
 
   void _toggleMute() {
@@ -112,13 +137,16 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
       backgroundColor: Colors.black,
       body: SafeArea(
         child: Stack(
-          children: [
-            // Full-height Video Player
+          children: [            // Full-height Video Player
             Positioned.fill(
               child: _isInitialized
                   ? GestureDetector(
                       onTap: _togglePlayPause, // Direct tap to play/pause
-                      child: Video(controller: _controller),
+                      behavior: HitTestBehavior.opaque, // Ensure taps are captured
+                      child: Video(
+                        controller: _controller,
+                        controls: NoVideoControls, // Disable all default controls
+                      ),
                     )
                   : _buildLoadingState(),
             ),
@@ -169,8 +197,44 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
                     );
                   },
                 ),
+              ),            ),
+              // Big Play/Pause Button (Center, appears temporarily)
+            if (_showPlayPauseButton && _isInitialized)
+              Center(
+                child: AnimatedOpacity(
+                  opacity: _showPlayPauseButton ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.7),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                    child: StreamBuilder(
+                      stream: _player.stream.playing,
+                      builder: (context, snapshot) {
+                        // Use the latest state from the stream, fallback to player state
+                        final isPlaying = snapshot.hasData 
+                            ? snapshot.data! 
+                            : _player.state.playing;
+                        return Icon(
+                          isPlaying ? Icons.pause : Icons.play_arrow,
+                          color: Colors.white,
+                          size: 60,
+                        );
+                      },
+                    ),
+                  ),
+                ),
               ),
-            ),
             
             // Video Scrubber Overlay (Bottom with 50% opacity)
             if (_isInitialized)
