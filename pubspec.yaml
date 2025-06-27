@@ -48,7 +48,7 @@ dependencies:
   media_kit_video: ^1.2.4
   media_kit_libs_windows_video: ^1.0.9
   media_kit_libs_video: ^1.0.4  # Required for Android/Linux
-  video_thumbnail: ^0.5.3
+  video_thumbnail: ^0.5.3  # For Android thumbnail generation
   path_provider: ^2.1.1
   path: ^1.8.3
   shared_preferences: ^2.2.2

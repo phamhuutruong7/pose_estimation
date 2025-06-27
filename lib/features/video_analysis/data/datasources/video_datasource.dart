@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
 import 'dart:async';
 
 import '../../domain/entities/video_item.dart';
@@ -87,9 +88,13 @@ class VideoDataSourceImpl implements VideoDataSource {
         final filePath = file.path!;
         
         // Check if this video is already imported (prevent duplicates)
-        final existingVideo = _videoHistory.where((video) => video.path == filePath).firstOrNull;
-        if (existingVideo != null) {
-          print('Video already imported: ${file.name}');
+        // Use file name and size for duplicate detection since cached paths are different each time
+        final existingVideos = _videoHistory.where((video) => 
+          video.name == file.name && video.sizeInBytes == file.size
+        );
+        if (existingVideos.isNotEmpty) {
+          final existingVideo = existingVideos.first;
+          print('Video already imported: ${file.name} (${file.size} bytes)');
           return existingVideo; // Return existing video instead of creating duplicate
         }
         
@@ -135,30 +140,53 @@ class VideoDataSourceImpl implements VideoDataSource {
       
       print('Attempting to generate thumbnail for: $videoPath');
       
-      // Try using FFmpeg if available
+      // Try using video_thumbnail package first (works on Android)
       try {
-        print('Attempting to generate thumbnail using FFmpeg...');
-        final String ffmpegThumbnailPath = await _generateThumbnailWithFFmpeg(videoPath, thumbnailPath);
-        if (await File(ffmpegThumbnailPath).exists()) {
-          print('✓ Thumbnail generated successfully using FFmpeg: $ffmpegThumbnailPath');
-          return ffmpegThumbnailPath;
+        print('Attempting to generate thumbnail using video_thumbnail package...');
+        final String? videoThumbnailPath = await VideoThumbnail.thumbnailFile(
+          video: videoPath,
+          thumbnailPath: thumbnailPath,
+          imageFormat: ImageFormat.JPEG,
+          maxHeight: 240,
+          maxWidth: 320,
+          timeMs: 1000, // Extract frame at 1 second
+          quality: 75,
+        );
+        
+        if (videoThumbnailPath != null && await File(videoThumbnailPath).exists()) {
+          print('✓ Thumbnail generated successfully using video_thumbnail: $videoThumbnailPath');
+          return videoThumbnailPath;
         }
       } catch (e) {
-        print('✗ FFmpeg thumbnail generation failed: $e');
-        if (e.toString().contains('No such file or directory') || 
-            e.toString().contains('not recognized') ||
-            e.toString().contains('cannot run')) {
-          print('  → FFmpeg is not installed or not in PATH');
-          print('  → To enable video thumbnails, install FFmpeg:');
-          print('    1. Download from https://ffmpeg.org/download.html');
-          print('    2. Extract to C:\\ffmpeg\\');  
-          print('    3. Add C:\\ffmpeg\\bin to your system PATH');
-          print('    4. Restart the application');
+        print('✗ video_thumbnail generation failed: $e');
+      }
+      
+      // Fallback to FFmpeg for desktop platforms
+      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        try {
+          print('Attempting to generate thumbnail using FFmpeg...');
+          final String ffmpegThumbnailPath = await _generateThumbnailWithFFmpeg(videoPath, thumbnailPath);
+          if (await File(ffmpegThumbnailPath).exists()) {
+            print('✓ Thumbnail generated successfully using FFmpeg: $ffmpegThumbnailPath');
+            return ffmpegThumbnailPath;
+          }
+        } catch (e) {
+          print('✗ FFmpeg thumbnail generation failed: $e');
+          if (e.toString().contains('No such file or directory') || 
+              e.toString().contains('not recognized') ||
+              e.toString().contains('cannot run')) {
+            print('  → FFmpeg is not installed or not in PATH');
+            print('  → To enable video thumbnails on desktop, install FFmpeg:');
+            print('    1. Download from https://ffmpeg.org/download.html');
+            print('    2. Extract to C:\\ffmpeg\\');  
+            print('    3. Add C:\\ffmpeg\\bin to your system PATH');
+            print('    4. Restart the application');
+          }
         }
       }
       
-      print('ℹ Using placeholder thumbnail - FFmpeg not available');
-      print('  For actual video frame thumbnails, please install FFmpeg');
+      print('ℹ Using placeholder thumbnail - No thumbnail generation method available');
+      print('  For actual video frame thumbnails, ensure video_thumbnail package works on this platform');
       
       return null; // Use placeholder thumbnail
     } catch (e) {
@@ -205,7 +233,9 @@ class VideoDataSourceImpl implements VideoDataSource {
     await _loadVideoHistory();
     
     // Remove if already exists (to avoid duplicates)
-    _videoHistory.removeWhere((item) => item.path == video.path);
+    // Use name and size for duplicate detection
+    _videoHistory.removeWhere((item) => 
+      item.name == video.name && item.sizeInBytes == video.sizeInBytes);
     
     // Add to beginning of list (most recent first)
     _videoHistory.insert(0, video);
