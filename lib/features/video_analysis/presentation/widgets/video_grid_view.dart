@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'package:path/path.dart' as path;
 
 import '../../../../core/utils/responsive_helper.dart';
 import '../../domain/entities/video_item.dart';
@@ -173,12 +174,30 @@ class VideoThumbnailCard extends StatelessWidget {
 
   Widget _buildThumbnail() {
     if (video.thumbnailPath != null && File(video.thumbnailPath!).existsSync()) {
-      return Image.file(
-        File(video.thumbnailPath!),
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return _buildPlaceholderThumbnail();
-        },
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.file(
+            File(video.thumbnailPath!),
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return _buildPlaceholderThumbnail();
+            },
+          ),
+          // Gradient overlay to make play button more visible
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.3),
+                ],
+              ),
+            ),
+          ),
+        ],
       );
     }
     return _buildPlaceholderThumbnail();
@@ -186,14 +205,132 @@ class VideoThumbnailCard extends StatelessWidget {
 
   Widget _buildPlaceholderThumbnail() {
     return Container(
-      color: Colors.grey[300],
-      child: const Center(
-        child: Icon(
-          Icons.video_library,
-          size: 40,
-          color: Colors.grey,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.blueGrey[400]!,
+            Colors.blueGrey[700]!,
+          ],
         ),
+      ),
+      child: Stack(
+        children: [
+          // Background pattern
+          Positioned.fill(
+            child: CustomPaint(
+              painter: VideoPatternPainter(),
+            ),
+          ),
+          // Content
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.video_library,
+                  size: 32,
+                  color: Colors.white.withValues(alpha: 0.9),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Video File',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (video.formattedSize.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    video.formattedSize,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 8,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          // File extension badge
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                path.extension(video.path).replaceFirst('.', '').toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 8,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+// Custom painter for video pattern background
+class VideoPatternPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.1)
+      ..strokeWidth = 1;
+
+    // Draw a subtle grid pattern
+    const double spacing = 20;
+    
+    // Vertical lines
+    for (double x = 0; x < size.width; x += spacing) {
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x, size.height),
+        paint,
+      );
+    }
+    
+    // Horizontal lines
+    for (double y = 0; y < size.height; y += spacing) {
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(size.width, y),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
