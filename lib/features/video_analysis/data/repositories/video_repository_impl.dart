@@ -51,6 +51,16 @@ class VideoRepositoryImpl implements VideoRepository {
   }
 
   @override
+  Future<Either<Failure, void>> removeVideosFromHistory(List<String> videoIds) async {
+    try {
+      await dataSource.removeVideosFromHistory(videoIds);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure());
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> clearVideoHistory() async {
     try {
       await dataSource.clearVideoHistory();

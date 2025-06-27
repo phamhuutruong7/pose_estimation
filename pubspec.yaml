@@ -51,6 +51,7 @@ dependencies:
   video_thumbnail: ^0.5.3
   path_provider: ^2.1.1
   path: ^1.8.3
+  shared_preferences: ^2.2.2
   
   # Version and Update Management
   package_info_plus: ^8.0.0

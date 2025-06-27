@@ -31,6 +31,15 @@ class RemoveVideoFromHistoryEvent extends VideoAnalysisEvent {
   List<Object> get props => [videoId];
 }
 
+class RemoveVideosFromHistoryEvent extends VideoAnalysisEvent {
+  final List<String> videoIds;
+
+  const RemoveVideosFromHistoryEvent(this.videoIds);
+
+  @override
+  List<Object> get props => [videoIds];
+}
+
 class ClearVideoHistoryEvent extends VideoAnalysisEvent {}
 
 class SaveVideoToHistoryEvent extends VideoAnalysisEvent {

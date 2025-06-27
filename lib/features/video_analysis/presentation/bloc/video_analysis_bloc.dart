@@ -5,6 +5,7 @@ import '../../domain/usecases/clear_video_history.dart';
 import '../../domain/usecases/get_video_history.dart';
 import '../../domain/usecases/import_video.dart';
 import '../../domain/usecases/remove_video_from_history.dart';
+import '../../domain/usecases/remove_videos_from_history.dart';
 import '../../domain/usecases/save_video_to_history.dart';
 import 'video_analysis_event.dart';
 import 'video_analysis_state.dart';
@@ -14,6 +15,7 @@ class VideoAnalysisBloc extends Bloc<VideoAnalysisEvent, VideoAnalysisState> {
   final GetVideoHistory getVideoHistory;
   final SaveVideoToHistory saveVideoToHistory;
   final RemoveVideoFromHistory removeVideoFromHistory;
+  final RemoveVideosFromHistory removeVideosFromHistory;
   final ClearVideoHistory clearVideoHistory;
 
   VideoAnalysisBloc({
@@ -21,6 +23,7 @@ class VideoAnalysisBloc extends Bloc<VideoAnalysisEvent, VideoAnalysisState> {
     required this.getVideoHistory,
     required this.saveVideoToHistory,
     required this.removeVideoFromHistory,
+    required this.removeVideosFromHistory,
     required this.clearVideoHistory,
   }) : super(VideoAnalysisInitial()) {
     on<ImportVideosEvent>(_onImportVideos);
@@ -28,6 +31,7 @@ class VideoAnalysisBloc extends Bloc<VideoAnalysisEvent, VideoAnalysisState> {
     on<SelectVideoEvent>(_onSelectVideo);
     on<SaveVideoToHistoryEvent>(_onSaveVideoToHistory);
     on<RemoveVideoFromHistoryEvent>(_onRemoveVideoFromHistory);
+    on<RemoveVideosFromHistoryEvent>(_onRemoveVideosFromHistory);
     on<ClearVideoHistoryEvent>(_onClearVideoHistory);
   }
 
@@ -133,6 +137,33 @@ class VideoAnalysisBloc extends Bloc<VideoAnalysisEvent, VideoAnalysisState> {
       },
       (_) async {
         // Reload history after removal
+        final historyResult = await getVideoHistory(NoParams());
+        if (!emit.isDone) {
+          historyResult.fold(
+            (failure) => emit(const VideoAnalysisError('Failed to load updated history')),
+            (history) => emit(VideoRemovalSuccess(history)),
+          );
+        }
+      },
+    );
+  }
+
+  Future<void> _onRemoveVideosFromHistory(
+    RemoveVideosFromHistoryEvent event,
+    Emitter<VideoAnalysisState> emit,
+  ) async {
+    emit(VideoAnalysisLoading());
+    
+    final result = await removeVideosFromHistory(event.videoIds);
+    
+    await result.fold(
+      (failure) async {
+        if (!emit.isDone) {
+          emit(const VideoAnalysisError('Failed to remove videos'));
+        }
+      },
+      (_) async {
+        // Reload history after all removals
         final historyResult = await getVideoHistory(NoParams());
         if (!emit.isDone) {
           historyResult.fold(

@@ -46,26 +46,30 @@ class _VideoAnalysisPageState extends State<VideoAnalysisPage> {
   }
 
   void _deleteSelectedVideos() {
+    if (_selectedVideoIds.isEmpty) return;
+    
+    // Store the BLoC reference before showing dialog
+    final videoBloc = context.read<VideoAnalysisBloc>();
+    final selectedIds = _selectedVideoIds.toList(); // Create a copy
+    
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Videos'),
         content: Text(
-          'Are you sure you want to delete ${_selectedVideoIds.length} selected video(s)?',
+          'Are you sure you want to delete ${selectedIds.length} selected video(s)?',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () {
-              // Dispatch delete event to BLoC
-              for (String videoId in _selectedVideoIds) {
-                context.read<VideoAnalysisBloc>().add(RemoveVideoFromHistoryEvent(videoId));
-              }
+              // Use the stored BLoC reference
+              videoBloc.add(RemoveVideosFromHistoryEvent(selectedIds));
               _clearSelection();
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete'),

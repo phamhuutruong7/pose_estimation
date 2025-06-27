@@ -15,6 +15,7 @@ import 'features/video_analysis/domain/usecases/clear_video_history.dart';
 import 'features/video_analysis/domain/usecases/get_video_history.dart';
 import 'features/video_analysis/domain/usecases/import_video.dart';
 import 'features/video_analysis/domain/usecases/remove_video_from_history.dart';
+import 'features/video_analysis/domain/usecases/remove_videos_from_history.dart';
 import 'features/video_analysis/domain/usecases/save_video_to_history.dart';
 import 'features/video_analysis/presentation/bloc/video_analysis_bloc.dart';
 
@@ -53,6 +54,7 @@ Future<void> init() async {
       getVideoHistory: sl(),
       saveVideoToHistory: sl(),
       removeVideoFromHistory: sl(),
+      removeVideosFromHistory: sl(),
       clearVideoHistory: sl(),
     ),
   );
@@ -62,6 +64,7 @@ Future<void> init() async {
   sl.registerLazySingleton(() => GetVideoHistory(sl()));
   sl.registerLazySingleton(() => SaveVideoToHistory(sl()));
   sl.registerLazySingleton(() => RemoveVideoFromHistory(sl()));
+  sl.registerLazySingleton(() => RemoveVideosFromHistory(sl()));
   sl.registerLazySingleton(() => ClearVideoHistory(sl()));
 
   // Repository

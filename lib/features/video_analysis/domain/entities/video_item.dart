@@ -69,4 +69,29 @@ class VideoItem extends Equatable {
       return '${kb.toStringAsFixed(1)} KB';
     }
   }
+
+  // JSON serialization methods for persistent storage
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'path': path,
+      'thumbnailPath': thumbnailPath,
+      'duration': duration.inMilliseconds,
+      'addedDate': addedDate.millisecondsSinceEpoch,
+      'sizeInBytes': sizeInBytes,
+    };
+  }
+
+  factory VideoItem.fromJson(Map<String, dynamic> json) {
+    return VideoItem(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      path: json['path'] as String,
+      thumbnailPath: json['thumbnailPath'] as String?,
+      duration: Duration(milliseconds: json['duration'] as int),
+      addedDate: DateTime.fromMillisecondsSinceEpoch(json['addedDate'] as int),
+      sizeInBytes: json['sizeInBytes'] as int,
+    );
+  }
 }

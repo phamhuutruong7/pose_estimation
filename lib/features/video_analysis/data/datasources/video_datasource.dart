@@ -1,7 +1,9 @@
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
+import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
 import '../../domain/entities/video_item.dart';
@@ -11,17 +13,69 @@ abstract class VideoDataSource {
   Future<List<VideoItem>> getVideoHistory();
   Future<void> saveVideoToHistory(VideoItem video);
   Future<void> removeVideoFromHistory(String videoId);
+  Future<void> removeVideosFromHistory(List<String> videoIds);
   Future<void> clearVideoHistory();
 }
 
 class VideoDataSourceImpl implements VideoDataSource {
-  // For simplicity, using in-memory storage
-  // In a real app, you'd use local database (SQLite/Hive) or shared preferences
+  static const String _storageKey = 'video_history';
   final List<VideoItem> _videoHistory = [];
+  bool _isLoaded = false;
+
+  Future<void> _loadVideoHistory() async {
+    if (_isLoaded) return;
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? jsonString = prefs.getString(_storageKey);
+      
+      if (jsonString != null) {
+        final List<dynamic> jsonList = json.decode(jsonString);
+        _videoHistory.clear();
+        
+        for (final jsonItem in jsonList) {
+          try {
+            final videoItem = VideoItem.fromJson(jsonItem as Map<String, dynamic>);
+            // Verify the video file still exists before adding to history
+            if (await File(videoItem.path).exists()) {
+              _videoHistory.add(videoItem);
+            } else {
+              // Clean up thumbnail if video file no longer exists
+              await _cleanupThumbnail(videoItem.thumbnailPath);
+            }
+          } catch (e) {
+            print('Error loading video item from storage: $e');
+          }
+        }
+      }
+      
+      _isLoaded = true;
+      print('Loaded ${_videoHistory.length} videos from storage');
+    } catch (e) {
+      print('Error loading video history: $e');
+      _isLoaded = true;
+    }
+  }
+
+  Future<void> _saveVideoHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final List<Map<String, dynamic>> jsonList = 
+          _videoHistory.map((video) => video.toJson()).toList();
+      final String jsonString = json.encode(jsonList);
+      await prefs.setString(_storageKey, jsonString);
+      print('Saved ${_videoHistory.length} videos to storage');
+    } catch (e) {
+      print('Error saving video history: $e');
+    }
+  }
 
   @override
   Future<VideoItem?> importVideo() async {
     try {
+      // Load existing videos first
+      await _loadVideoHistory();
+      
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv', 'webm'],
@@ -30,19 +84,30 @@ class VideoDataSourceImpl implements VideoDataSource {
 
       if (result != null && result.files.single.path != null) {
         final file = result.files.single;
+        final filePath = file.path!;
+        
+        // Check if this video is already imported (prevent duplicates)
+        final existingVideo = _videoHistory.where((video) => video.path == filePath).firstOrNull;
+        if (existingVideo != null) {
+          print('Video already imported: ${file.name}');
+          return existingVideo; // Return existing video instead of creating duplicate
+        }
         
         // Generate thumbnail for the video
-        final thumbnailPath = await _generateVideoThumbnail(file.path!);
+        final thumbnailPath = await _generateVideoThumbnail(filePath);
         
         final videoItem = VideoItem(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
-          path: file.path!,
+          path: filePath,
           name: file.name,
           sizeInBytes: file.size,
           duration: Duration.zero, // Will be determined when video loads
           thumbnailPath: thumbnailPath,
           addedDate: DateTime.now(),
         );
+        
+        // Add to history and save
+        await saveVideoToHistory(videoItem);
         
         return videoItem;
       }
@@ -131,21 +196,30 @@ class VideoDataSourceImpl implements VideoDataSource {
 
   @override
   Future<List<VideoItem>> getVideoHistory() async {
+    await _loadVideoHistory();
     return List.from(_videoHistory);
   }
 
   @override
   Future<void> saveVideoToHistory(VideoItem video) async {
+    await _loadVideoHistory();
+    
     // Remove if already exists (to avoid duplicates)
     _videoHistory.removeWhere((item) => item.path == video.path);
     
     // Add to beginning of list (most recent first)
     _videoHistory.insert(0, video);
     
-    // Keep only last 20 videos
-    if (_videoHistory.length > 20) {
-      _videoHistory.removeRange(20, _videoHistory.length);
+    // Keep only last 50 videos (increased from 20)
+    if (_videoHistory.length > 50) {
+      final videosToRemove = _videoHistory.sublist(50);
+      for (final videoToRemove in videosToRemove) {
+        await _cleanupThumbnail(videoToRemove.thumbnailPath);
+      }
+      _videoHistory.removeRange(50, _videoHistory.length);
     }
+    
+    await _saveVideoHistory();
   }
 
   Future<void> _cleanupThumbnail(String? thumbnailPath) async {
@@ -163,6 +237,8 @@ class VideoDataSourceImpl implements VideoDataSource {
 
   @override
   Future<void> removeVideoFromHistory(String videoId) async {
+    await _loadVideoHistory();
+    
     // Find the video to get its thumbnail path before removing
     final videoToRemove = _videoHistory.where((item) => item.id == videoId).firstOrNull;
     if (videoToRemove != null) {
@@ -170,14 +246,45 @@ class VideoDataSourceImpl implements VideoDataSource {
       await _cleanupThumbnail(videoToRemove.thumbnailPath);
     }
     _videoHistory.removeWhere((item) => item.id == videoId);
+    
+    await _saveVideoHistory();
   }
 
   @override
   Future<void> clearVideoHistory() async {
+    await _loadVideoHistory();
+    
     // Clean up all thumbnail files
     for (final video in _videoHistory) {
       await _cleanupThumbnail(video.thumbnailPath);
     }
     _videoHistory.clear();
+    
+    await _saveVideoHistory();
+  }
+
+  // Add method to remove multiple videos (for bulk deletion)
+  @override
+  Future<void> removeVideosFromHistory(List<String> videoIds) async {
+    await _loadVideoHistory();
+    
+    print('Removing ${videoIds.length} videos from history: $videoIds');
+    
+    for (final videoId in videoIds) {
+      final videoToRemove = _videoHistory.where((item) => item.id == videoId).firstOrNull;
+      if (videoToRemove != null) {
+        print('Removing video: ${videoToRemove.name}');
+        await _cleanupThumbnail(videoToRemove.thumbnailPath);
+      } else {
+        print('Video not found for deletion: $videoId');
+      }
+    }
+    
+    final removedCount = _videoHistory.where((item) => videoIds.contains(item.id)).length;
+    _videoHistory.removeWhere((item) => videoIds.contains(item.id));
+    
+    print('Successfully removed $removedCount videos. Remaining: ${_videoHistory.length}');
+    
+    await _saveVideoHistory();
   }
 }

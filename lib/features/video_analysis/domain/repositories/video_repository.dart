@@ -8,5 +8,6 @@ abstract class VideoRepository {
   Future<Either<Failure, List<VideoItem>>> getVideoHistory();
   Future<Either<Failure, void>> saveVideoToHistory(VideoItem video);
   Future<Either<Failure, void>> removeVideoFromHistory(String videoId);
+  Future<Either<Failure, void>> removeVideosFromHistory(List<String> videoIds);
   Future<Either<Failure, void>> clearVideoHistory();
 }
