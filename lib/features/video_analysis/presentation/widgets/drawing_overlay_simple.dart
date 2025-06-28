@@ -119,24 +119,6 @@ class DrawingOverlayState extends State<DrawingOverlay> {
               onPanEnd: _onPanEnd,
               child: Container(
                 color: Colors.transparent,
-                // Add a visual indicator when drawing is enabled
-                child: widget.currentTool != DrawingTool.none 
-                  ? Positioned(
-                      top: 10,
-                      left: 10,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'Drawing: ${widget.currentTool.name}',
-                          style: const TextStyle(color: Colors.white, fontSize: 12),
-                        ),
-                      ),
-                    )
-                  : null,
               ),
             ) : Container(),
           ),
