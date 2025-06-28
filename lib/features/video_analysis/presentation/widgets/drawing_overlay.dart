@@ -45,7 +45,9 @@ class DrawingOverlay extends StatefulWidget {
 class DrawingOverlayState extends State<DrawingOverlay> {
   final List<DrawingLine> _lines = [];
   Offset? _firstPoint;
+  Offset? _currentEndPoint;
   bool _isDrawingLine = false;
+  bool _isDraggingEndPoint = false;
 
   List<DrawingLine> get lines => _lines;
 
@@ -62,6 +64,9 @@ class DrawingOverlayState extends State<DrawingOverlay> {
     
     if (widget.currentTool == DrawingTool.eraser) {
       _handleEraserStart(details);
+    } else if (widget.currentTool == DrawingTool.line && _isDrawingLine && _firstPoint != null) {
+      // Check if we're starting to drag from near the current end point
+      _handleLinePointDragStart(details);
     }
   }
 
@@ -70,6 +75,16 @@ class DrawingOverlayState extends State<DrawingOverlay> {
     
     if (widget.currentTool == DrawingTool.eraser) {
       _handleEraserUpdate(details);
+    } else if (widget.currentTool == DrawingTool.line && _isDraggingEndPoint) {
+      _handleLinePointDragUpdate(details);
+    }
+  }
+
+  void _onPanEnd(DragEndDetails details) {
+    if (!widget.isEnabled) return;
+    
+    if (widget.currentTool == DrawingTool.line && _isDraggingEndPoint) {
+      _handleLinePointDragEnd();
     }
   }
 
@@ -79,17 +94,53 @@ class DrawingOverlayState extends State<DrawingOverlay> {
       setState(() {
         _firstPoint = details.localPosition;
         _isDrawingLine = true;
+        _currentEndPoint = null;
+        _isDraggingEndPoint = false;
       });
-    } else {
-      // Second tap - complete the line
+    } else if (!_isDraggingEndPoint) {
+      // Second tap - set initial end point, ready for dragging
+      setState(() {
+        _currentEndPoint = details.localPosition;
+        _isDraggingEndPoint = false; // Will be set to true when dragging starts
+      });
+    }
+  }
+
+  void _handleLinePointDragStart(DragStartDetails details) {
+    if (_firstPoint != null && _currentEndPoint != null) {
+      // Check if the drag start is near the current end point
+      const double tolerance = 30.0;
+      final double distance = (details.localPosition - _currentEndPoint!).distance;
+      
+      if (distance <= tolerance) {
+        setState(() {
+          _isDraggingEndPoint = true;
+        });
+      }
+    }
+  }
+
+  void _handleLinePointDragUpdate(DragUpdateDetails details) {
+    if (_firstPoint != null && _isDraggingEndPoint) {
+      setState(() {
+        _currentEndPoint = details.localPosition;
+      });
+    }
+  }
+
+  void _handleLinePointDragEnd() {
+    if (_firstPoint != null && _currentEndPoint != null) {
+      // Complete the line
       setState(() {
         _lines.add(DrawingLine(
           start: _firstPoint!,
-          end: details.localPosition,
+          end: _currentEndPoint!,
           timestamp: DateTime.now(),
         ));
         _firstPoint = null;
+        _currentEndPoint = null;
         _isDrawingLine = false;
+        _isDraggingEndPoint = false;
       });
       widget.onDrawingStateChanged?.call();
     }
@@ -155,7 +206,9 @@ class DrawingOverlayState extends State<DrawingOverlay> {
     setState(() {
       _lines.clear();
       _firstPoint = null;
+      _currentEndPoint = null;
       _isDrawingLine = false;
+      _isDraggingEndPoint = false;
     });
   }
 
@@ -170,11 +223,14 @@ class DrawingOverlayState extends State<DrawingOverlay> {
               onTapDown: _onTapDown,
               onPanStart: _onPanStart,
               onPanUpdate: _onPanUpdate,
+              onPanEnd: _onPanEnd,
               child: CustomPaint(
                 painter: DrawingPainter(
                   lines: _lines,
                   firstPoint: _firstPoint,
+                  currentEndPoint: _currentEndPoint,
                   isDrawingLine: _isDrawingLine,
+                  isDraggingEndPoint: _isDraggingEndPoint,
                   currentTool: widget.currentTool,
                 ),
                 child: Container(),
@@ -189,13 +245,17 @@ class DrawingOverlayState extends State<DrawingOverlay> {
 class DrawingPainter extends CustomPainter {
   final List<DrawingLine> lines;
   final Offset? firstPoint;
+  final Offset? currentEndPoint;
   final bool isDrawingLine;
+  final bool isDraggingEndPoint;
   final DrawingTool currentTool;
 
   DrawingPainter({
     required this.lines,
     this.firstPoint,
+    this.currentEndPoint,
     required this.isDrawingLine,
+    required this.isDraggingEndPoint,
     this.currentTool = DrawingTool.none,
   });
 
@@ -218,7 +278,7 @@ class DrawingPainter extends CustomPainter {
       paint.style = PaintingStyle.stroke;
     }
 
-    // Draw the first point if we're in drawing mode
+    // Draw the current line being created
     if (firstPoint != null && isDrawingLine) {
       paint.color = Colors.yellow.withOpacity(0.8);
       paint.style = PaintingStyle.fill;
@@ -229,6 +289,27 @@ class DrawingPainter extends CustomPainter {
       paint.strokeWidth = 2;
       paint.color = Colors.yellow.withOpacity(0.6);
       canvas.drawCircle(firstPoint!, 10, paint);
+      
+      // If we have a current end point, draw the preview line
+      if (currentEndPoint != null) {
+        paint.color = Colors.yellow.withOpacity(0.7);
+        paint.strokeWidth = 3.0;
+        paint.style = PaintingStyle.stroke;
+        canvas.drawLine(firstPoint!, currentEndPoint!, paint);
+        
+        // Draw the end point
+        paint.style = PaintingStyle.fill;
+        paint.color = Colors.yellow.withOpacity(0.9);
+        canvas.drawCircle(currentEndPoint!, 6, paint);
+        
+        // Draw a visual indicator that this point can be dragged
+        if (!isDraggingEndPoint) {
+          paint.style = PaintingStyle.stroke;
+          paint.strokeWidth = 2;
+          paint.color = Colors.white.withOpacity(0.8);
+          canvas.drawCircle(currentEndPoint!, 12, paint);
+        }
+      }
     }
   }
 

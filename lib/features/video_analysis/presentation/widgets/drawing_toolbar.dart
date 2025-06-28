@@ -106,7 +106,7 @@ class _DrawingToolbarState extends State<DrawingToolbar> with SingleTickerProvid
                   child: _buildToolButton(
                     svgAssetPath: 'assets/icons/line_tool.svg',
                     tool: DrawingTool.line,
-                    tooltip: 'Draw Line\n(Tap twice)',
+                    tooltip: 'Draw Line\n(Tap → Tap → Drag)',
                   ),
                 ),
                 
