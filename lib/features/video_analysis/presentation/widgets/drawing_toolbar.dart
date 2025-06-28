@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 enum DrawingTool {
   none,
@@ -103,7 +104,7 @@ class _DrawingToolbarState extends State<DrawingToolbar> with SingleTickerProvid
                   opacity: _expandAnimation.value,
                   duration: const Duration(milliseconds: 200),
                   child: _buildToolButton(
-                    icon: Icons.show_chart, // Diagonal line from bottom-left to top-right
+                    svgAssetPath: 'assets/icons/line_tool.svg',
                     tool: DrawingTool.line,
                     tooltip: 'Draw Line\n(Tap twice)',
                   ),
@@ -125,7 +126,7 @@ class _DrawingToolbarState extends State<DrawingToolbar> with SingleTickerProvid
                   opacity: _expandAnimation.value,
                   duration: const Duration(milliseconds: 200),
                   child: _buildToolButton(
-                    icon: Icons.clear, // Clear/delete icon that represents erasing
+                    svgAssetPath: 'assets/icons/eraser_tool.svg',
                     tool: DrawingTool.eraser,
                     tooltip: 'Eraser\n(Drag over lines)',
                   ),
@@ -138,7 +139,7 @@ class _DrawingToolbarState extends State<DrawingToolbar> with SingleTickerProvid
                   opacity: _expandAnimation.value,
                   duration: const Duration(milliseconds: 200),
                   child: _buildActionButton(
-                    icon: Icons.clear_all,
+                    svgAssetPath: 'assets/icons/clear_all.svg',
                     onPressed: widget.hasDrawings ? widget.onClearDrawings : null,
                     tooltip: 'Clear All',
                   ),
@@ -179,8 +180,19 @@ class _DrawingToolbarState extends State<DrawingToolbar> with SingleTickerProvid
     );
   }
 
+  Widget _getSvgIcon(String assetPath, {Color? color, double size = 18}) {
+    return SvgPicture.asset(
+      assetPath,
+      width: size,
+      height: size,
+      colorFilter: color != null 
+          ? ColorFilter.mode(color, BlendMode.srcIn)
+          : null,
+    );
+  }
+
   Widget _buildToolButton({
-    required IconData icon,
+    required String svgAssetPath,
     required DrawingTool tool,
     required String tooltip,
   }) {
@@ -201,8 +213,8 @@ class _DrawingToolbarState extends State<DrawingToolbar> with SingleTickerProvid
               width: 2,
             ),
           ),
-          child: Icon(
-            icon,
+          child: _getSvgIcon(
+            svgAssetPath,
             color: isSelected ? Colors.yellow : Colors.white.withOpacity(0.8),
             size: 18, // Smaller icon to fit better
           ),
@@ -212,7 +224,7 @@ class _DrawingToolbarState extends State<DrawingToolbar> with SingleTickerProvid
   }
 
   Widget _buildActionButton({
-    required IconData icon,
+    required String svgAssetPath,
     required VoidCallback? onPressed,
     required String tooltip,
   }) {
@@ -229,8 +241,8 @@ class _DrawingToolbarState extends State<DrawingToolbar> with SingleTickerProvid
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Icon(
-            icon,
+          child: _getSvgIcon(
+            svgAssetPath,
             color: isEnabled 
                 ? Colors.white.withOpacity(0.8)
                 : Colors.white.withOpacity(0.3),
