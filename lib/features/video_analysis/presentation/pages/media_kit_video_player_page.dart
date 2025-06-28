@@ -6,8 +6,8 @@ import 'dart:io';
 import '../../../../core/utils/responsive_helper.dart';
 import '../../domain/entities/video_item.dart';
 import '../widgets/persistent_video_scrubber.dart';
-import '../widgets/drawing_overlay.dart';
-import '../widgets/drawing_toolbar.dart';
+import '../widgets/drawing_overlay_simple.dart';
+import '../widgets/drawing_toolbar_new.dart';
 
 class MediaKitVideoPlayerPage extends StatefulWidget {
   final VideoItem video;

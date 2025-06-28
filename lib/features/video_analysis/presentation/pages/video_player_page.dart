@@ -4,8 +4,8 @@ import 'dart:io';
 
 import '../../../../core/utils/responsive_helper.dart';
 import '../../domain/entities/video_item.dart';
-import '../widgets/drawing_overlay.dart';
-import '../widgets/drawing_toolbar.dart';
+import '../widgets/drawing_overlay_simple.dart';
+import '../widgets/drawing_toolbar_new.dart';
 
 class VideoPlayerPage extends StatefulWidget {
   final VideoItem video;
@@ -198,9 +198,11 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   }
 
   void _onDrawingToolSelected(DrawingTool tool) {
+    print('Video player: Drawing tool selected: $tool, previous: $_selectedDrawingTool');
     setState(() {
       _selectedDrawingTool = tool;
     });
+    print('Video player: Tool selection updated, enabled: ${_selectedDrawingTool != DrawingTool.none}');
   }
 
   void _onClearDrawings() {
@@ -240,13 +242,18 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                       isEnabled: _selectedDrawingTool != DrawingTool.none,
                       currentTool: _selectedDrawingTool,
                       onDrawingStateChanged: _onDrawingStateChanged,
-                      child: GestureDetector(
-                        onTap: _selectedDrawingTool == DrawingTool.none ? _toggleControls : null,
-                        child: AspectRatio(
-                          aspectRatio: _controller.value.aspectRatio,
-                          child: VideoPlayer(_controller),
-                        ),
-                      ),
+                      child: _selectedDrawingTool == DrawingTool.none 
+                        ? GestureDetector(
+                            onTap: _toggleControls,
+                            child: AspectRatio(
+                              aspectRatio: _controller.value.aspectRatio,
+                              child: VideoPlayer(_controller),
+                            ),
+                          )
+                        : AspectRatio(
+                            aspectRatio: _controller.value.aspectRatio,
+                            child: VideoPlayer(_controller),
+                          ),
                     )
                   : _buildErrorOrLoadingState(),
             ),
@@ -408,6 +415,10 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                   ),
                 ),
               ),
+            
+            // Drawing Instructions
+            if (_isInitialized)
+              DrawingInstructions(selectedTool: _selectedDrawingTool),
           ],
         ),
       ),

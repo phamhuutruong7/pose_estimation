@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 enum DrawingTool {
   none,
@@ -72,108 +71,117 @@ class _DrawingToolbarState extends State<DrawingToolbar> with SingleTickerProvid
       animation: _expandAnimation,
       builder: (context, child) {
         return Container(
-          width: 48, // Reduced width to match smaller buttons
-          margin: const EdgeInsets.only(right: 16), // Removed top/bottom margins
+          width: _isExpanded ? 60 : 50,
+          margin: const EdgeInsets.only(right: 16, top: 80, bottom: 80),
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(20), // Reduced border radius for compactness
+            borderRadius: BorderRadius.circular(_isExpanded ? 30 : 25),
             border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 4), // Minimal top padding
+              const SizedBox(height: 12),
               
               // Toggle Button (Pencil/Close)
               _buildToggleButton(),
               
               // Expanded Content
               if (_isExpanded) ...[
-                const SizedBox(height: 4), // Minimal spacing
+                const SizedBox(height: 8),
                 
                 // Divider
                 Container(
                   height: 1,
-                  margin: const EdgeInsets.symmetric(horizontal: 8), // Reduced margins
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
                   color: Colors.white.withValues(alpha: 0.3),
                 ),
                 
-                const SizedBox(height: 4), // Minimal spacing
+                const SizedBox(height: 8),
                 
-                // Line Drawing Tool
+                // Line Drawing Tool (Blue)
                 AnimatedOpacity(
                   opacity: _expandAnimation.value,
                   duration: const Duration(milliseconds: 200),
                   child: _buildToolButton(
-                    svgAssetPath: 'assets/icons/line_tool.svg',
+                    icon: Icons.trending_up,
                     tool: DrawingTool.line,
-                    tooltip: 'Draw Line\n(Press & Drag)',
+                    tooltip: 'Draw Line (Blue)\n(Press & Drag)',
                   ),
                 ),
                 
-                const SizedBox(height: 4), // Minimal spacing
+                const SizedBox(height: 8),
                 
-                // Rectangle Drawing Tool
+                // Rectangle Drawing Tool (Green)
                 AnimatedOpacity(
                   opacity: _expandAnimation.value,
                   duration: const Duration(milliseconds: 200),
                   child: _buildToolButton(
-                    svgAssetPath: 'assets/icons/rectangle.svg',
+                    icon: Icons.crop_square,
                     tool: DrawingTool.rectangle,
-                    tooltip: 'Draw Rectangle\n(Press & Drag)',
+                    tooltip: 'Draw Rectangle (Green)\n(Press & Drag)',
                   ),
                 ),
                 
-                const SizedBox(height: 4), // Minimal spacing
+                const SizedBox(height: 8),
                 
-                // Circle Drawing Tool
+                // Circle Drawing Tool (Red)
                 AnimatedOpacity(
                   opacity: _expandAnimation.value,
                   duration: const Duration(milliseconds: 200),
                   child: _buildToolButton(
-                    svgAssetPath: 'assets/icons/round.svg',
+                    icon: Icons.radio_button_unchecked,
                     tool: DrawingTool.circle,
-                    tooltip: 'Draw Circle\n(Press & Drag)',
+                    tooltip: 'Draw Circle (Red)\n(Press & Drag)',
                   ),
                 ),
                 
-                const SizedBox(height: 4), // Minimal spacing
+                const SizedBox(height: 8),
                 
                 // Divider
                 Container(
                   height: 1,
-                  margin: const EdgeInsets.symmetric(horizontal: 8), // Reduced margins
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
                   color: Colors.white.withValues(alpha: 0.3),
                 ),
                 
-                const SizedBox(height: 4), // Minimal spacing
+                const SizedBox(height: 8),
                 
                 // Eraser Tool
                 AnimatedOpacity(
                   opacity: _expandAnimation.value,
                   duration: const Duration(milliseconds: 200),
                   child: _buildToolButton(
-                    svgAssetPath: 'assets/icons/eraser_tool.svg',
+                    icon: Icons.auto_fix_high,
                     tool: DrawingTool.eraser,
-                    tooltip: 'Eraser\n(Drag over lines)',
+                    tooltip: 'Eraser\n(Drag over shapes)',
                   ),
                 ),
                 
-                const SizedBox(height: 4), // Minimal spacing
+                const SizedBox(height: 8),
+                
+                // Divider
+                Container(
+                  height: 1,
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                  color: Colors.white.withValues(alpha: 0.3),
+                ),
+                
+                const SizedBox(height: 8),
                 
                 // Clear All Button
                 AnimatedOpacity(
                   opacity: _expandAnimation.value,
                   duration: const Duration(milliseconds: 200),
                   child: _buildActionButton(
-                    svgAssetPath: 'assets/icons/clear_all.svg',
+                    icon: Icons.clear_all,
                     onPressed: widget.hasDrawings ? widget.onClearDrawings : null,
                     tooltip: 'Clear All',
                   ),
                 ),
               ],
               
-              const SizedBox(height: 4), // Minimal bottom padding
+              const SizedBox(height: 12),
             ],
           ),
         );
@@ -187,11 +195,11 @@ class _DrawingToolbarState extends State<DrawingToolbar> with SingleTickerProvid
       child: GestureDetector(
         onTap: _toggleExpanded,
         child: Container(
-          width: 32, // Much more compact
-          height: 32, // Much more compact
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             color: _isExpanded ? Colors.red.withValues(alpha: 0.2) : Colors.blue.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(22),
             border: Border.all(
               color: _isExpanded ? Colors.red : Colors.blue,
               width: 2,
@@ -200,26 +208,15 @@ class _DrawingToolbarState extends State<DrawingToolbar> with SingleTickerProvid
           child: Icon(
             _isExpanded ? Icons.close : Icons.edit,
             color: _isExpanded ? Colors.red : Colors.blue,
-            size: 18, // Smaller icon to fit better
+            size: 24,
           ),
         ),
       ),
     );
   }
 
-  Widget _getSvgIcon(String assetPath, {Color? color, double size = 18}) {
-    return SvgPicture.asset(
-      assetPath,
-      width: size,
-      height: size,
-      colorFilter: color != null 
-          ? ColorFilter.mode(color, BlendMode.srcIn)
-          : null,
-    );
-  }
-
   Widget _buildToolButton({
-    required String svgAssetPath,
+    required IconData icon,
     required DrawingTool tool,
     required String tooltip,
   }) {
@@ -228,25 +225,22 @@ class _DrawingToolbarState extends State<DrawingToolbar> with SingleTickerProvid
     return Tooltip(
       message: tooltip,
       child: GestureDetector(
-        onTap: () {
-          print('Tool selected: $tool, currently selected: ${widget.selectedTool}');
-          widget.onToolSelected(tool);
-        },
+        onTap: () => widget.onToolSelected(tool),
         child: Container(
-          width: 32, // Much more compact
-          height: 32, // Much more compact
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
-            color: isSelected ? Colors.white.withValues(alpha: 0.3) : Colors.transparent,
-            borderRadius: BorderRadius.circular(4), // Rectangle with rounded corners
-            border: isSelected ? Border.all(
-              color: Colors.white.withValues(alpha: 0.5),
-              width: 1,
-            ) : null,
+            color: isSelected ? Colors.yellow.withValues(alpha: 0.2) : Colors.transparent,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: isSelected ? Colors.yellow : Colors.transparent,
+              width: 2,
+            ),
           ),
-          child: _getSvgIcon(
-            svgAssetPath,
-            color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.8),
-            size: 18, // Smaller icon to fit better
+          child: Icon(
+            icon,
+            color: isSelected ? Colors.yellow : Colors.white.withValues(alpha: 0.8),
+            size: 24,
           ),
         ),
       ),
@@ -254,7 +248,7 @@ class _DrawingToolbarState extends State<DrawingToolbar> with SingleTickerProvid
   }
 
   Widget _buildActionButton({
-    required String svgAssetPath,
+    required IconData icon,
     required VoidCallback? onPressed,
     required String tooltip,
   }) {
@@ -265,18 +259,71 @@ class _DrawingToolbarState extends State<DrawingToolbar> with SingleTickerProvid
       child: GestureDetector(
         onTap: onPressed,
         child: Container(
-          width: 32, // Much more compact
-          height: 32, // Much more compact
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             color: Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(22),
           ),
-          child: _getSvgIcon(
-            svgAssetPath,
+          child: Icon(
+            icon,
             color: isEnabled 
                 ? Colors.white.withValues(alpha: 0.8)
                 : Colors.white.withValues(alpha: 0.3),
-            size: 18, // Smaller icon to fit better
+            size: 24,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class DrawingInstructions extends StatelessWidget {
+  final DrawingTool selectedTool;
+
+  const DrawingInstructions({
+    super.key,
+    required this.selectedTool,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (selectedTool == DrawingTool.none) return const SizedBox.shrink();
+
+    String instruction = '';
+    switch (selectedTool) {
+      case DrawingTool.line:
+        instruction = 'Draw Line (Blue):\nPress and drag to create';
+        break;
+      case DrawingTool.rectangle:
+        instruction = 'Draw Rectangle (Green):\nPress and drag to create';
+        break;
+      case DrawingTool.circle:
+        instruction = 'Draw Circle (Red):\nPress and drag to create';
+        break;
+      case DrawingTool.eraser:
+        instruction = 'Eraser Mode:\nDrag over shapes to remove them';
+        break;
+      case DrawingTool.none:
+        return const SizedBox.shrink();
+    }
+
+    return Positioned(
+      top: 120,
+      left: 16,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.8),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.yellow.withValues(alpha: 0.5)),
+        ),
+        child: Text(
+          instruction,
+          style: const TextStyle(
+            color: Colors.yellow,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),
