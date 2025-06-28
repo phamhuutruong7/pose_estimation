@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'drawing_toolbar.dart'; // Import for DrawingTool enum
 
 class DrawingPoint {
   final Offset point;
@@ -26,12 +27,14 @@ class DrawingLine {
 class DrawingOverlay extends StatefulWidget {
   final Widget child;
   final bool isEnabled;
+  final DrawingTool currentTool;
   final VoidCallback? onDrawingStateChanged;
 
   const DrawingOverlay({
     super.key,
     required this.child,
     this.isEnabled = false,
+    this.currentTool = DrawingTool.none,
     this.onDrawingStateChanged,
   });
 
@@ -48,7 +51,29 @@ class DrawingOverlayState extends State<DrawingOverlay> {
 
   void _onTapDown(TapDownDetails details) {
     if (!widget.isEnabled) return;
+    
+    if (widget.currentTool == DrawingTool.line) {
+      _handleLineTap(details);
+    }
+  }
 
+  void _onPanStart(DragStartDetails details) {
+    if (!widget.isEnabled) return;
+    
+    if (widget.currentTool == DrawingTool.eraser) {
+      _handleEraserStart(details);
+    }
+  }
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    if (!widget.isEnabled) return;
+    
+    if (widget.currentTool == DrawingTool.eraser) {
+      _handleEraserUpdate(details);
+    }
+  }
+
+  void _handleLineTap(TapDownDetails details) {
     if (_firstPoint == null) {
       // First tap - record starting point
       setState(() {
@@ -70,25 +95,68 @@ class DrawingOverlayState extends State<DrawingOverlay> {
     }
   }
 
+  void _handleEraserStart(DragStartDetails details) {
+    _checkAndRemoveLineAt(details.localPosition);
+  }
+
+  void _handleEraserUpdate(DragUpdateDetails details) {
+    _checkAndRemoveLineAt(details.localPosition);
+  }
+
+  void _checkAndRemoveLineAt(Offset position) {
+    const double tolerance = 20.0; // Increased tolerance for easier erasing
+    
+    for (int i = _lines.length - 1; i >= 0; i--) {
+      final line = _lines[i];
+      if (_isPointNearLine(position, line.start, line.end, tolerance)) {
+        setState(() {
+          _lines.removeAt(i);
+        });
+        widget.onDrawingStateChanged?.call();
+        break; // Only remove one line per drag point
+      }
+    }
+  }
+
+  bool _isPointNearLine(Offset point, Offset lineStart, Offset lineEnd, double tolerance) {
+    // Calculate distance from point to line segment
+    final double A = point.dx - lineStart.dx;
+    final double B = point.dy - lineStart.dy;
+    final double C = lineEnd.dx - lineStart.dx;
+    final double D = lineEnd.dy - lineStart.dy;
+
+    final double dot = A * C + B * D;
+    final double lenSq = C * C + D * D;
+    
+    if (lenSq == 0) {
+      // Line start and end are the same point
+      return (point - lineStart).distance <= tolerance;
+    }
+    
+    double param = dot / lenSq;
+
+    Offset closestPoint;
+    if (param < 0) {
+      closestPoint = lineStart;
+    } else if (param > 1) {
+      closestPoint = lineEnd;
+    } else {
+      closestPoint = Offset(
+        lineStart.dx + param * C,
+        lineStart.dy + param * D,
+      );
+    }
+
+    final double distance = (point - closestPoint).distance;
+    return distance <= tolerance;
+  }
+
   void clearDrawings() {
     setState(() {
       _lines.clear();
       _firstPoint = null;
       _isDrawingLine = false;
     });
-  }
-
-  void undoLastLine() {
-    if (_lines.isNotEmpty) {
-      setState(() {
-        _lines.removeLast();
-      });
-    } else if (_firstPoint != null) {
-      setState(() {
-        _firstPoint = null;
-        _isDrawingLine = false;
-      });
-    }
   }
 
   @override
@@ -100,11 +168,14 @@ class DrawingOverlayState extends State<DrawingOverlay> {
           Positioned.fill(
             child: GestureDetector(
               onTapDown: _onTapDown,
+              onPanStart: _onPanStart,
+              onPanUpdate: _onPanUpdate,
               child: CustomPaint(
                 painter: DrawingPainter(
                   lines: _lines,
                   firstPoint: _firstPoint,
                   isDrawingLine: _isDrawingLine,
+                  currentTool: widget.currentTool,
                 ),
                 child: Container(),
               ),
@@ -119,11 +190,13 @@ class DrawingPainter extends CustomPainter {
   final List<DrawingLine> lines;
   final Offset? firstPoint;
   final bool isDrawingLine;
+  final DrawingTool currentTool;
 
   DrawingPainter({
     required this.lines,
     this.firstPoint,
     required this.isDrawingLine,
+    this.currentTool = DrawingTool.none,
   });
 
   @override

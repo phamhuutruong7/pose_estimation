@@ -210,11 +210,6 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     });
   }
 
-  void _onUndoLast() {
-    _drawingOverlayKey.currentState?.undoLastLine();
-    _updateDrawingState();
-  }
-
   void _onDrawingStateChanged() {
     _updateDrawingState();
   }
@@ -243,6 +238,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                   ? DrawingOverlay(
                       key: _drawingOverlayKey,
                       isEnabled: _selectedDrawingTool != DrawingTool.none,
+                      currentTool: _selectedDrawingTool,
                       onDrawingStateChanged: _onDrawingStateChanged,
                       child: GestureDetector(
                         onTap: _selectedDrawingTool == DrawingTool.none ? _toggleControls : null,
@@ -408,7 +404,6 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                     selectedTool: _selectedDrawingTool,
                     onToolSelected: _onDrawingToolSelected,
                     onClearDrawings: _onClearDrawings,
-                    onUndoLast: _onUndoLast,
                     hasDrawings: _hasDrawings,
                   ),
                 ),

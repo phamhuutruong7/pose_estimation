@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 enum DrawingTool {
   none,
   line,
+  eraser,
   // Future tools: circle, rectangle, freehand, etc.
 }
 
@@ -10,7 +11,6 @@ class DrawingToolbar extends StatefulWidget {
   final DrawingTool selectedTool;
   final Function(DrawingTool) onToolSelected;
   final VoidCallback onClearDrawings;
-  final VoidCallback onUndoLast;
   final bool hasDrawings;
 
   const DrawingToolbar({
@@ -18,7 +18,6 @@ class DrawingToolbar extends StatefulWidget {
     required this.selectedTool,
     required this.onToolSelected,
     required this.onClearDrawings,
-    required this.onUndoLast,
     this.hasDrawings = false,
   });
 
@@ -121,14 +120,14 @@ class _DrawingToolbarState extends State<DrawingToolbar> with SingleTickerProvid
                 
                 const SizedBox(height: 4), // Minimal spacing
                 
-                // Undo Button
+                // Eraser Tool
                 AnimatedOpacity(
                   opacity: _expandAnimation.value,
                   duration: const Duration(milliseconds: 200),
-                  child: _buildActionButton(
-                    icon: Icons.undo,
-                    onPressed: widget.hasDrawings ? widget.onUndoLast : null,
-                    tooltip: 'Undo Last',
+                  child: _buildToolButton(
+                    icon: Icons.clear, // Clear/delete icon that represents erasing
+                    tool: DrawingTool.eraser,
+                    tooltip: 'Eraser\n(Drag over lines)',
                   ),
                 ),
                 

@@ -47,11 +47,6 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
     });
   }
 
-  void _onUndoLast() {
-    _drawingOverlayKey.currentState?.undoLastLine();
-    _updateDrawingState();
-  }
-
   void _onDrawingStateChanged() {
     _updateDrawingState();
   }
@@ -178,6 +173,7 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
                   ? DrawingOverlay(
                       key: _drawingOverlayKey,
                       isEnabled: _selectedDrawingTool != DrawingTool.none,
+                      currentTool: _selectedDrawingTool,
                       onDrawingStateChanged: _onDrawingStateChanged,
                       child: GestureDetector(
                         onTap: _selectedDrawingTool == DrawingTool.none ? _togglePlayPause : null,
@@ -223,7 +219,6 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
                     selectedTool: _selectedDrawingTool,
                     onToolSelected: _onDrawingToolSelected,
                     onClearDrawings: _onClearDrawings,
-                    onUndoLast: _onUndoLast,
                     hasDrawings: _hasDrawings,
                   ),
                 ),
