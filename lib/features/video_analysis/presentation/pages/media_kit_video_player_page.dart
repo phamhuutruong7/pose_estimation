@@ -6,6 +6,8 @@ import 'dart:io';
 import '../../../../core/utils/responsive_helper.dart';
 import '../../domain/entities/video_item.dart';
 import '../widgets/persistent_video_scrubber.dart';
+import '../widgets/drawing_overlay.dart';
+import '../widgets/drawing_toolbar.dart';
 
 class MediaKitVideoPlayerPage extends StatefulWidget {
   final VideoItem video;
@@ -26,6 +28,39 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
   bool _isMuted = false;
   double _volumeBeforeMute = 1.0;
   bool _showPlayPauseButton = false;
+  
+  // Drawing functionality
+  DrawingTool _selectedDrawingTool = DrawingTool.none;
+  final GlobalKey<DrawingOverlayState> _drawingOverlayKey = GlobalKey<DrawingOverlayState>();
+  bool _hasDrawings = false;
+
+  void _onDrawingToolSelected(DrawingTool tool) {
+    setState(() {
+      _selectedDrawingTool = tool;
+    });
+  }
+
+  void _onClearDrawings() {
+    _drawingOverlayKey.currentState?.clearDrawings();
+    setState(() {
+      _hasDrawings = false;
+    });
+  }
+
+  void _onUndoLast() {
+    _drawingOverlayKey.currentState?.undoLastLine();
+    _updateDrawingState();
+  }
+
+  void _onDrawingStateChanged() {
+    _updateDrawingState();
+  }
+
+  void _updateDrawingState() {
+    setState(() {
+      _hasDrawings = _drawingOverlayKey.currentState?.lines.isNotEmpty ?? false;
+    });
+  }
 
   @override
   void initState() {
@@ -137,15 +172,20 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
       backgroundColor: Colors.black,
       body: SafeArea(
         child: Stack(
-          children: [            // Full-height Video Player
+          children: [            // Full-height Video Player with Drawing Overlay
             Positioned.fill(
               child: _isInitialized
-                  ? GestureDetector(
-                      onTap: _togglePlayPause, // Direct tap to play/pause
-                      behavior: HitTestBehavior.opaque, // Ensure taps are captured
-                      child: Video(
-                        controller: _controller,
-                        controls: NoVideoControls, // Disable all default controls
+                  ? DrawingOverlay(
+                      key: _drawingOverlayKey,
+                      isEnabled: _selectedDrawingTool != DrawingTool.none,
+                      onDrawingStateChanged: _onDrawingStateChanged,
+                      child: GestureDetector(
+                        onTap: _selectedDrawingTool == DrawingTool.none ? _togglePlayPause : null,
+                        behavior: HitTestBehavior.opaque,
+                        child: Video(
+                          controller: _controller,
+                          controls: NoVideoControls,
+                        ),
                       ),
                     )
                   : _buildLoadingState(),
@@ -171,6 +211,23 @@ class _MediaKitVideoPlayerPageState extends State<MediaKitVideoPlayerPage> {
                 ),
               ),
             ),
+            
+            // Drawing Toolbar (Right Side)
+            if (_isInitialized)
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: DrawingToolbar(
+                    selectedTool: _selectedDrawingTool,
+                    onToolSelected: _onDrawingToolSelected,
+                    onClearDrawings: _onClearDrawings,
+                    onUndoLast: _onUndoLast,
+                    hasDrawings: _hasDrawings,
+                  ),
+                ),
+              ),
             
             // Mute/Unmute Button (Top-Right)
             Positioned(

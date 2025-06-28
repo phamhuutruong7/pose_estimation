@@ -4,6 +4,8 @@ import 'dart:io';
 
 import '../../../../core/utils/responsive_helper.dart';
 import '../../domain/entities/video_item.dart';
+import '../widgets/drawing_overlay.dart';
+import '../widgets/drawing_toolbar.dart';
 
 class VideoPlayerPage extends StatefulWidget {
   final VideoItem video;
@@ -22,6 +24,11 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   bool _isInitialized = false;
   bool _showControls = true;
   double _playbackSpeed = 1.0;
+  
+  // Drawing functionality
+  DrawingTool _selectedDrawingTool = DrawingTool.none;
+  final GlobalKey<DrawingOverlayState> _drawingOverlayKey = GlobalKey<DrawingOverlayState>();
+  bool _hasDrawings = false;
 
   @override
   void initState() {
@@ -190,6 +197,34 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     );
   }
 
+  void _onDrawingToolSelected(DrawingTool tool) {
+    setState(() {
+      _selectedDrawingTool = tool;
+    });
+  }
+
+  void _onClearDrawings() {
+    _drawingOverlayKey.currentState?.clearDrawings();
+    setState(() {
+      _hasDrawings = false;
+    });
+  }
+
+  void _onUndoLast() {
+    _drawingOverlayKey.currentState?.undoLastLine();
+    _updateDrawingState();
+  }
+
+  void _onDrawingStateChanged() {
+    _updateDrawingState();
+  }
+
+  void _updateDrawingState() {
+    setState(() {
+      _hasDrawings = _drawingOverlayKey.currentState?.lines.isNotEmpty ?? false;
+    });
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -202,14 +237,19 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       backgroundColor: Colors.black,
       body: SafeArea(
         child: Stack(
-          children: [            // Video Player or Error State
+          children: [            // Video Player or Error State with Drawing Overlay
             Center(
               child: _isInitialized
-                  ? GestureDetector(
-                      onTap: _toggleControls,
-                      child: AspectRatio(
-                        aspectRatio: _controller.value.aspectRatio,
-                        child: VideoPlayer(_controller),
+                  ? DrawingOverlay(
+                      key: _drawingOverlayKey,
+                      isEnabled: _selectedDrawingTool != DrawingTool.none,
+                      onDrawingStateChanged: _onDrawingStateChanged,
+                      child: GestureDetector(
+                        onTap: _selectedDrawingTool == DrawingTool.none ? _toggleControls : null,
+                        child: AspectRatio(
+                          aspectRatio: _controller.value.aspectRatio,
+                          child: VideoPlayer(_controller),
+                        ),
                       ),
                     )
                   : _buildErrorOrLoadingState(),
@@ -353,6 +393,23 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                         const SizedBox(height: 16),
                       ],
                     ),
+                  ),
+                ),
+              ),
+            
+            // Drawing Toolbar (Right Side)
+            if (_isInitialized)
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: DrawingToolbar(
+                    selectedTool: _selectedDrawingTool,
+                    onToolSelected: _onDrawingToolSelected,
+                    onClearDrawings: _onClearDrawings,
+                    onUndoLast: _onUndoLast,
+                    hasDrawings: _hasDrawings,
                   ),
                 ),
               ),

@@ -1,0 +1,244 @@
+import 'package:flutter/material.dart';
+
+enum DrawingTool {
+  none,
+  line,
+  // Future tools: circle, rectangle, freehand, etc.
+}
+
+class DrawingToolbar extends StatefulWidget {
+  final DrawingTool selectedTool;
+  final Function(DrawingTool) onToolSelected;
+  final VoidCallback onClearDrawings;
+  final VoidCallback onUndoLast;
+  final bool hasDrawings;
+
+  const DrawingToolbar({
+    super.key,
+    required this.selectedTool,
+    required this.onToolSelected,
+    required this.onClearDrawings,
+    required this.onUndoLast,
+    this.hasDrawings = false,
+  });
+
+  @override
+  State<DrawingToolbar> createState() => _DrawingToolbarState();
+}
+
+class _DrawingToolbarState extends State<DrawingToolbar> with SingleTickerProviderStateMixin {
+  bool _isExpanded = false;
+  late AnimationController _animationController;
+  late Animation<double> _expandAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _expandAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _toggleExpanded() {
+    setState(() {
+      _isExpanded = !_isExpanded;
+      if (_isExpanded) {
+        _animationController.forward();
+      } else {
+        _animationController.reverse();
+        // When collapsing, also deselect any drawing tool
+        if (widget.selectedTool != DrawingTool.none) {
+          widget.onToolSelected(DrawingTool.none);
+        }
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _expandAnimation,
+      builder: (context, child) {
+        return Container(
+          width: 48, // Reduced width to match smaller buttons
+          margin: const EdgeInsets.only(right: 16), // Removed top/bottom margins
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.7),
+            borderRadius: BorderRadius.circular(20), // Reduced border radius for compactness
+            border: Border.all(color: Colors.white.withOpacity(0.2)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 4), // Minimal top padding
+              
+              // Toggle Button (Pencil/Close)
+              _buildToggleButton(),
+              
+              // Expanded Content
+              if (_isExpanded) ...[
+                const SizedBox(height: 4), // Minimal spacing
+                
+                // Divider
+                Container(
+                  height: 1,
+                  margin: const EdgeInsets.symmetric(horizontal: 8), // Reduced margins
+                  color: Colors.white.withOpacity(0.3),
+                ),
+                
+                const SizedBox(height: 4), // Minimal spacing
+                
+                // Line Drawing Tool
+                AnimatedOpacity(
+                  opacity: _expandAnimation.value,
+                  duration: const Duration(milliseconds: 200),
+                  child: _buildToolButton(
+                    icon: Icons.show_chart, // Diagonal line from bottom-left to top-right
+                    tool: DrawingTool.line,
+                    tooltip: 'Draw Line\n(Tap twice)',
+                  ),
+                ),
+                
+                const SizedBox(height: 4), // Minimal spacing
+                
+                // Divider
+                Container(
+                  height: 1,
+                  margin: const EdgeInsets.symmetric(horizontal: 8), // Reduced margins
+                  color: Colors.white.withOpacity(0.3),
+                ),
+                
+                const SizedBox(height: 4), // Minimal spacing
+                
+                // Undo Button
+                AnimatedOpacity(
+                  opacity: _expandAnimation.value,
+                  duration: const Duration(milliseconds: 200),
+                  child: _buildActionButton(
+                    icon: Icons.undo,
+                    onPressed: widget.hasDrawings ? widget.onUndoLast : null,
+                    tooltip: 'Undo Last',
+                  ),
+                ),
+                
+                const SizedBox(height: 4), // Minimal spacing
+                
+                // Clear All Button
+                AnimatedOpacity(
+                  opacity: _expandAnimation.value,
+                  duration: const Duration(milliseconds: 200),
+                  child: _buildActionButton(
+                    icon: Icons.clear_all,
+                    onPressed: widget.hasDrawings ? widget.onClearDrawings : null,
+                    tooltip: 'Clear All',
+                  ),
+                ),
+              ],
+              
+              const SizedBox(height: 4), // Minimal bottom padding
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildToggleButton() {
+    return Tooltip(
+      message: _isExpanded ? 'Close Drawing Tools' : 'Open Drawing Tools',
+      child: GestureDetector(
+        onTap: _toggleExpanded,
+        child: Container(
+          width: 32, // Much more compact
+          height: 32, // Much more compact
+          decoration: BoxDecoration(
+            color: _isExpanded ? Colors.red.withOpacity(0.2) : Colors.blue.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _isExpanded ? Colors.red : Colors.blue,
+              width: 2,
+            ),
+          ),
+          child: Icon(
+            _isExpanded ? Icons.close : Icons.edit,
+            color: _isExpanded ? Colors.red : Colors.blue,
+            size: 18, // Smaller icon to fit better
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToolButton({
+    required IconData icon,
+    required DrawingTool tool,
+    required String tooltip,
+  }) {
+    final isSelected = widget.selectedTool == tool;
+    
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: () => widget.onToolSelected(tool),
+        child: Container(
+          width: 32, // Much more compact
+          height: 32, // Much more compact
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.yellow.withOpacity(0.2) : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? Colors.yellow : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          child: Icon(
+            icon,
+            color: isSelected ? Colors.yellow : Colors.white.withOpacity(0.8),
+            size: 18, // Smaller icon to fit better
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required VoidCallback? onPressed,
+    required String tooltip,
+  }) {
+    final isEnabled = onPressed != null;
+    
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: onPressed,
+        child: Container(
+          width: 32, // Much more compact
+          height: 32, // Much more compact
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(
+            icon,
+            color: isEnabled 
+                ? Colors.white.withOpacity(0.8)
+                : Colors.white.withOpacity(0.3),
+            size: 18, // Smaller icon to fit better
+          ),
+        ),
+      ),
+    );
+  }
+}
